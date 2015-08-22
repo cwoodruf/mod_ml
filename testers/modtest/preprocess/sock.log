@@ -1,0 +1,9 @@
+server waiting for client connection on port 49994
+connection from 206.12.16.211:53976
+received data: {"User-Agent":"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:39.0) Gecko/20100101 Firefox/39.0","ctime":"Sun Aug 09 17:31:13 2015","REQUEST_URI":"/modtest/preprocess-run","HTTP_HOST":"cloudsmall8.cs.surrey.sfu.ca:8898","status_line":"301 Moved Permanently","content_type":"text/html; charset=iso-8859-1","status_line":"301 Moved Permanently","nonce":"nonce=1f574d37d4e3c2439b0c2033af9f3783b361fea4:9b358984449cb5f7918d2d72beee4269e8b6a9bd"}
+
+
+connection from 206.12.16.211:53977
+received data: {"User-Agent":"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:39.0) Gecko/20100101 Firefox/39.0","ctime":"Sun Aug 09 17:31:13 2015","REQUEST_URI":"/modtest/preprocess-run/","HTTP_HOST":"cloudsmall8.cs.surrey.sfu.ca:8898","status_line":"200 OK","content_type":"text/html","status_line":"200 OK","nonce":"nonce=3bc541dd0b29bc79d857b06fcf2eb53211219bdd:bd66cc8d48f8e98f826a20e8229ece855be87f13"}
+
+

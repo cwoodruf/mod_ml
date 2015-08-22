@@ -1,0 +1,43 @@
+\echo saving initial query results to botstats.vw
+\o botstats.vw
+\t on
+\a 
+\pset fieldsep ''
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 0;
+
+-- need to get 31 times more rows for class=1 given the difference in numbers
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+select (2*class)-1,' 1 ',ip, '|', ' skew:',skew, ' hskew:',hskew, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr from botstats where class = 1;
+
+-- originals with all features 
+-- original select (2*class)-1,' 1 ',ip, '|', ' mean:',mean, ' var:',var, ' skew:',skew, ' kurtosis:',kurtosis, ' hmean:',hmean, ' hvar:',hvar, ' hskew:',hskew, ' hkurtosis:',hkurtosis, ' htmean:',htmean, ' htvar:',htvar, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr, ' uacount:',uacount, errprop from botstats where class = 1;
+-- original select (2*class)-1,' 1 ',ip, '|', ' mean:',mean, ' var:',var, ' skew:',skew, ' kurtosis:',kurtosis, ' hmean:',hmean, ' hvar:',hvar, ' hskew:',hskew, ' hkurtosis:',hkurtosis, ' htmean:',htmean, ' htvar:',htvar, ' htskew:',htskew, ' htkurtosis:',htkurtosis, ' poverr:',poverr, ' uacount:',uacount, errprop from botstats where class = 0;
+

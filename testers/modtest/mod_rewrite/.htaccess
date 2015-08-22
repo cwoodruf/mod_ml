@@ -1,0 +1,10 @@
+RewriteEngine On
+RewriteCond %{ENV:client} bot
+RewriteRule .* /modtest/move/index.html [R=302,L]
+
+<IfModule ml_module>
+    MLEnabled on
+    MLClassResponse "YES" "env" "client=bot"
+    MLClassifier proc /srv/cal/src/apache/ml/testers/y.pl
+    SetHandler ml
+</IfModule>

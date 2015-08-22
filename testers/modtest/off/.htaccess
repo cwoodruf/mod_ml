@@ -1,0 +1,79 @@
+<IfModule ml_module>
+    MLEnabled off
+# the rest of this should not happen
+    MLOutFormat raw
+
+    MLLabels literal "LABEL!"
+    MLFeatures literal "headers"
+    MLFeatures header User-Agent
+    MLFeatures header Content-Type 
+    MLFeatures header Content-Disposition
+    MLFeatures header Content-Length
+
+    MLFeatures literal "cgi data"
+    MLFeatures cgi greeting name
+
+    MLFeatures literal "request time based data"
+    MLFeatures time epoch date=%Y-%m-%d millis epoch ctime rfc822
+
+    MLFeatures literal "request struct"
+    MLFeatures request args content_type content_encoding filename handler 
+    MLFeatures request hostname method protocol path_info range status_line 
+    MLFeatures request the_request unparsed_uri vlist_validator
+
+    MLFeatures literal "'client' cookie"
+    MLFeatures cookie client
+
+    MLFeatures literal "environment"
+    MLFeatures env SCRIPT_URL
+    MLFeatures env SCRIPT_URI
+    MLFeatures env HTTP_HOST
+    MLFeatures env HTTP_USER_AGENT
+    MLFeatures env HTTP_ACCEPT
+    MLFeatures env HTTP_ACCEPT_LANGUAGE
+    MLFeatures env HTTP_ACCEPT_ENCODING
+    MLFeatures env HTTP_REFERER
+    MLFeatures env HTTP_DNT
+    MLFeatures env HTTP_CONNECTION
+    MLFeatures env PATH
+    # MLFeatures env SERVER_SIGNATURE
+    MLFeatures env SERVER_SOFTWARE
+    MLFeatures env SERVER_NAME
+    MLFeatures env SERVER_ADDR
+    MLFeatures env SERVER_PORT
+    MLFeatures env REMOTE_ADDR
+    MLFeatures env DOCUMENT_ROOT
+    MLFeatures env REQUEST_SCHEME
+    MLFeatures env CONTEXT_PREFIX
+    MLFeatures env CONTEXT_DOCUMENT_ROOT
+    MLFeatures env SERVER_ADMIN
+    MLFeatures env SCRIPT_FILENAME
+    MLFeatures env REMOTE_PORT
+    MLFeatures env GATEWAY_INTERFACE
+    MLFeatures env SERVER_PROTOCOL
+    MLFeatures env REQUEST_METHOD
+    MLFeatures env QUERY_STRING
+    MLFeatures env REQUEST_URI
+    MLFeatures env SCRIPT_NAME
+
+    MLFeatures literal "nonce examples"
+    MLFeatures auth blergh0
+    MLFeatures auth =blergh4
+    MLFeatures auth secret1=blergh1
+    MLFeatures auth secret2=blergh2
+    MLFeatures auth secret3=blergh3
+
+    MLClassifier proc /srv/cal/src/apache/ml/testers/echo.pl
+    MLOutFormat quoted
+    MLClassifier proc /srv/cal/src/apache/ml/testers/echo.pl
+    MLOutFormat csv
+    MLClassifier proc /srv/cal/src/apache/ml/testers/echo.pl
+    MLOutFormat jsonarray
+    MLOutProc proc /srv/cal/src/apache/ml/testers/caps.pl
+    MLClassifier proc /srv/cal/src/apache/ml/testers/echo.pl
+    MLOutFormat jsonfields
+    MLOutProc regex 's/([A-Z]+)/$1$1/g'
+    MLClassifier proc /srv/cal/src/apache/ml/testers/echo.pl
+
+    SetHandler ml
+</IfModule>

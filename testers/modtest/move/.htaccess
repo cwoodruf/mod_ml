@@ -1,0 +1,3 @@
+RewriteEngine On
+# RewriteCond %{ENV:client} bot
+# RewriteRule .* /ml/index.html [R=302,L]

@@ -1,0 +1,13 @@
+drop view if exists botclasses;
+create or replace view botclasses as select 
+    (2*isbot)-1 as class,
+    mean,var,skew,kurtosis,
+    hmean,hvar,hskew,hkurtosis,
+    htmean,htvar,htskew,htkurtosis,
+    pages/reqs as poverr,uacount, 
+    errs/reqs as errprop,
+    pages,reqs,errs,uas,
+    l.ip as ip
+    from botstats_archive s left outer join 
+    (select ip,isbot,count(*) as uacount from botiplabels_archive group by ip,isbot) l
+        on l.ip=s.ip;

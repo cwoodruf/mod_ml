@@ -1,0 +1,71 @@
+\x on
+
+select isbot,
+ count(*) as n,
+ sum(poverr)/count(*) as p,
+ sum(uacount)/count(*) as ua,
+ sum(errprop)/count(*) as err,
+ sum(mean)/count(*) as m,
+ sum(var)/count(*) as v,
+ sum(skew)/count(*) as s,
+ sum(kurtosis)/count(*) as k,
+ sum(htmean)/count(*) as htm,
+ sum(htvar)/count(*) as htv,
+ sum(htskew)/count(*) as hts,
+ sum(htkurtosis)/count(*) as htk,
+ sum(hmean)/count(*) as hm,
+ sum(hvar)/count(*) as hv,
+ sum(hskew)/count(*) as hs,
+ sum(hkurtosis)/count(*) as hk 
+from botnormalized_archive 
+group by isbot;
+
+-- for my bots
+-- sample size is 8
+
+select isbot,
+ count(*) as n,
+ sum(poverr)/count(*) as p,
+ sum(uacount)/count(*) as ua,
+ sum(errprop)/count(*) as err,
+ sum(mean)/count(*) as m,
+ sum(var)/count(*) as v,
+ sum(skew)/count(*) as s,
+ sum(kurtosis)/count(*) as k,
+ sum(htmean)/count(*) as htm,
+ sum(htvar)/count(*) as htv,
+ sum(htskew)/count(*) as hts,
+ sum(htkurtosis)/count(*) as htk,
+ sum(hmean)/count(*) as hm,
+ sum(hvar)/count(*) as hv,
+ sum(hskew)/count(*) as hs,
+ sum(hkurtosis)/count(*) as hk 
+from botnormalized_archive 
+where ip like '%219:8898' 
+group by isbot;
+
+
+select isbot,
+ substring(ip from '.*/'),
+ count(*) as n,
+ sum(poverr)/count(*) as p,
+ sum(uacount)/count(*) as ua,
+ sum(errprop)/count(*) as err,
+ sum(mean)/count(*) as m,
+ sum(var)/count(*) as v,
+ sum(skew)/count(*) as s,
+ sum(kurtosis)/count(*) as k,
+ sum(htmean)/count(*) as htm,
+ sum(htvar)/count(*) as htv,
+ sum(htskew)/count(*) as hts,
+ sum(htkurtosis)/count(*) as htk,
+ sum(hmean)/count(*) as hm,
+ sum(hvar)/count(*) as hv,
+ sum(hskew)/count(*) as hs,
+ sum(hkurtosis)/count(*) as hk 
+from botnormalized_archive 
+group by isbot, substring(ip from '.*/')
+order by isbot, m;
+
+\x off
+

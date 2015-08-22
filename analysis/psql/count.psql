@@ -1,0 +1,11 @@
+\echo botstats not archived mean not null
+select count(*) from botstats where ip not like 'archive-%' and mean is not null;
+\echo botstats reqs not archives 
+select sum(reqs) as total_reqs from botstats where ip not like 'archive-%';
+\echo botlatest all 
+select count(*) from botlatest;
+\echo botlog what is left to process
+select count(*) from botlog;
+select pg_sleep(10);
+select count(*) from botlog;
+

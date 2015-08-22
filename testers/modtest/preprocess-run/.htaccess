@@ -1,0 +1,19 @@
+
+# data gathering for identifying bots
+
+<IfModule ml_module>
+    MLEnabled on
+
+    MLLabels header User-Agent
+    MLFeatures time ctime
+    MLFeatures env REQUEST_URI HTTP_HOST
+    MLFeatures request status_line
+    MLFeatures request content_type
+    MLFeatures request status_line
+    MLFeatures auth nonce=blerg
+
+    MLOutFormat jsonfields
+
+    # this is started with /srv/cal/src/apache/ml/testers/startsock.sh
+    MLPreProcess ip cloudsmall8.cs.surrey.sfu.ca:37777
+</IfModule>

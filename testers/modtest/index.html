@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+<title>mod_ml test links</title>
+<style type="text/css">
+* { 
+    font-family: helvetica, arial, sans-serif;
+    font-size: 11pt
+}
+div.explain { 
+    width: 600px;
+    font-style: italic;
+}
+</style>
+</head>
+<body>
+<h3>mod_ml test links</h3>
+<div class="explain">
+    These links use .htaccess files to demonstrate various aspects of mod_ml functionality.<br>
+    See also the ml_bot.conf file in conf-available for a more fully realized application
+</div>
+<ul>
+    <li>mod_rewrite integration: <a href="mod_rewrite">should show a page from &quot;move&quot;</a><br>
+    uses Apache attached classifier script (/usr/local/bin/y.pl) and demonstrates setting an environment variable.</li>
+    <li>unix sockets and cleaning features: <a href="cleaners/?greeting=howdy&name=stranger"
+        >capitalize words, show epoch seconds and hour</a><br>
+    string sent through /tmp/usock.sock (/usr/local/bin/usock.pl must be running)</li>
+    <li>dump data and format it in various ways: 
+    <a href="dump/?greeting=bye&name=for+now">should show 5 different formats</a><br>
+    (raw, quoted, csv, jsonarray, jsonfields)
+    </li>
+    <li>turn off mod_ml: <a href="off">should show a plain html page</a><br>
+    uses same configuration as dump but with &quot;MLEnabled off&quot;</li>
+    <li>example IP preprocessor: <a href="preprocess-run">click here to add a line to</a>: 
+    <a href="preprocess/index.txt">sock.log</a></li>
+    <li>generate http code: <a href="httpcode">click here to get a random 404|302</a> (the index.html page does exist)</li>
+</ul>
+</div>
+</body>
+</html>

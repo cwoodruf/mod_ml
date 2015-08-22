@@ -1,0 +1,94 @@
+--
+-- make a normalized set of values suitable for use in support vector machine etc
+-- s_name is the source table in s_name format, t_name is the target normalized table
+--
+create or replace function botnormalize(s_name varchar(64), t_name varchar(64)) returns void as $$
+declare
+    diffs record;
+    uadiffs record;
+begin
+
+execute format('drop table if exists %I', t_name);
+
+execute format('
+    create table if not exists %I (
+    ip varchar(128) primary key,
+    isbot integer,
+    mean double precision,
+    var double precision,
+    skew double precision,
+    kurtosis double precision,
+    hmean double precision,
+    hvar double precision,
+    hskew double precision,
+    hkurtosis double precision,
+    htmean double precision,
+    htvar double precision,
+    htskew double precision,
+    htkurtosis double precision,
+    poverr double precision,
+    uacount double precision,
+    errprop double precision
+    )', t_name);
+
+execute format('
+    select 
+        (max(mean)-min(mean)) m, 
+        (max(var)-min(var)) v, 
+        (max(skew)-min(skew)) s, 
+        (max(kurtosis)-min(kurtosis)) k, 
+        (max(hmean)-min(hmean)) hm, 
+        (max(hvar)-min(hvar)) hv, 
+        (max(hskew)-min(hskew)) hs, 
+        (max(hkurtosis)-min(hkurtosis)) hk, 
+        (max(htmean)-min(hmean)) htm, 
+        (max(htvar)-min(hvar)) htv, 
+        (max(htskew)-min(hskew)) hts, 
+        (max(htkurtosis)-min(hkurtosis)) htk, 
+        (max(pages/reqs)-min(pages/reqs)) rat,
+        (max(pages)-min(pages)) pg, 
+        (max(reqs)-min(reqs)) rq,
+        (max(errs/reqs)-min(errs/reqs)) erat
+        from %I', s_name)
+into diffs; 
+
+/*
+select 
+    (max(uanum)-min(uanum)) ua
+    into uadiffs 
+    from (select ip,count(*) uanum from botiplabels group by ip) ipl;
+*/
+
+execute format('
+    insert into %I (
+        ip, isbot,
+        mean, var, skew, kurtosis, 
+        hmean, hvar, hskew, hkurtosis, 
+        htmean, htvar, htskew, htkurtosis, 
+        poverr, uacount, errprop
+    )
+    select 
+        %I.ip, pbot,
+        0.0+mean/%s, 0.0+var/%s, 0.0+skew/%s, 0.0+kurtosis/%s, 
+        0.0+hmean/%s, 0.0+hvar/%s, 0.0+hskew/%s, 0.0+hkurtosis/%s, 
+        0.0+htmean/%s, 0.0+htvar/%s, 0.0+htskew/%s, 0.0+htkurtosis/%s, 
+        (0.0+pages/reqs)/%s, 0.0+uacount, (0.0+errs/reqs)/%s
+    from %I
+    join (select 
+            ip, count(*) uacount, 0.0+sum(isbot)/count(*) pbot 
+            from botiplabels group by ip
+    ) ipc 
+    on (%I.ip=ipc.ip)', 
+    t_name, 
+    s_name,
+    diffs.m, diffs.v, diffs.s, diffs.k,
+    diffs.hm, diffs.hv, diffs.hs, diffs.hk,
+    diffs.htm, diffs.htv, diffs.hts, diffs.htk,
+    diffs.rat, diffs.erat,
+    s_name,
+    s_name
+);
+
+end
+$$ LANGUAGE plpgsql;
+

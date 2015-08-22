@@ -1,0 +1,37 @@
+\t on
+\a 
+\pset fieldsep ' '
+\echo @relation bots
+\echo 
+\echo @attribute class {-1,1}
+\echo @attribute mean numeric
+\echo @attribute var numeric
+\echo @attribute skew numeric
+\echo @attribute kurtosis numeric
+\echo @attribute hmean numeric
+\echo @attribute hvar numeric
+\echo @attribute hskew numeric
+\echo @attribute hkurtosis numeric
+\echo @attribute htmean numeric
+\echo @attribute htvar numeric
+\echo @attribute htskew numeric
+\echo @attribute htkurtosis numeric
+\echo @attribute poverr numeric
+\echo @attribute uacount numeric
+\echo @attribute errprop numeric
+\echo 
+
+select 
+    (2*isbot)-1 class,
+    mean,var,skew,kurtosis,
+    hmean,hvar,hskew,hkurtosis,
+    htmean,htvar,htskew,htkurtosis,
+    pages/reqs as poverr,uacount, 
+    errs/reqs as errprop 
+    from botstats_archive s join 
+    (select ip,isbot,count(*) as uacount from botiplabels_archive group by ip,isbot) l
+        on l.ip=s.ip where isbot is not null order by random();
+
+-- select (2*isbot)-1,'"'||ip||'"',mean,var,skew,kurtosis,hmean,hvar,hskew,hkurtosis,htmean,htvar,htskew,htkurtosis,poverr,uacount, errprop from botnormalized_archive where isbot is not null order by random();
+
+

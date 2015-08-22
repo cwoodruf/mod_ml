@@ -1,0 +1,15 @@
+<IfModule ml_module>
+    MLEnabled on
+    MLDefFieldProc proc /usr/local/bin/caps.pl
+    MLFieldProc ip cloudsmall8.cs.surrey.sfu.ca:39993 time epoch
+    MLFieldProc regex "s/^0*(\d)/$1/" time hour=%H
+
+    MLFeatures header User-Agent
+    MLFeatures time epoch hour=%H
+    MLFeatures env REMOTE_ADDR
+    MLFeatures cgi greeting
+    MLFeatures cgi name
+    MLOutFormat quoted
+    MLClassifier sock /tmp/usock.sock
+    SetHandler ml
+</IfModule>
