@@ -4,7 +4,7 @@
 use FileHandle;
 use sigtrap handler => \&ending, 'normal-signals';
 
-open LOG, ">> /etc/apache2/bin/randyn.log" or die "can't open log: $!";
+open LOG, ">> /usr/local/apache2.4/testers/randyn.log" or die "can't open log: $!";
 LOG->autoflush(1);
 STDOUT->autoflush(1);
 print LOG scalar(localtime)," $0 started\n";

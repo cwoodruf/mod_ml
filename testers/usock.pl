@@ -11,13 +11,13 @@ $| = 1; # this was needed for their example to work
 my %opt;
 getopts("l:s:",\%opt);
 
-my $log = $opt{l} || "/etc/apache2/bin/usock.log";
+my $log = $opt{l} || "/usr/local/apache2.4/testers/usock.log";
 system "touch $log";
 die "bad log file $log" unless -f $log;
 open LOG, ">> $log" or die "can't open $log: $!";
 LOG->autoflush(1);
 
-my $socket_path = $opt{s} || "/etc/apache2/bin/usock.sock";
+my $socket_path = $opt{s} || "/tmp/usock.sock";
 print LOG scalar(localtime)," open socket $socket_path\n";
 
 my $sock_addr = sockaddr_un($socket_path);

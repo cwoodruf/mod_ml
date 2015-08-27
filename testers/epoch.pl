@@ -15,7 +15,7 @@ getopts('w:l:p:',\%opt);
 my $port = $opt{p} || '39993';
 die "invalid port $port" unless $port =~ /^\d{0,5}$/;
 
-my $log = $opt{l} || "/srv/cal/src/apache/ml/testers/epoch-$port.log";
+my $log = $opt{l} || "/usr/local/apache2.4/testers/epoch-$port.log";
 if ($log eq '-') {
     open LOG, ">-" or die "can't open STDOUT: $!";
 } else {
@@ -25,7 +25,7 @@ if ($log eq '-') {
 }
 LOG->autoflush(1);
 
-my $whitelist = $opt{w} || "/srv/cal/src/apache/ml/testers/hosts";
+my $whitelist = $opt{w} || "/etc/hosts";
 my %whitelist;
 &reload;
 
@@ -107,11 +107,15 @@ while(1)
     }
     # write response data to the connected client
     # in this case its either the epoch seconds or the original string
+    my ($day, $mon, $monstr, $year, $hour, $min, $sec); 
     if (
-        my ($day, $monstr, $year, $hour, $min, $sec) = 
+        ($day, $monstr, $year, $hour, $min, $sec) = 
             ($data =~ m#(\d+)/(\w+)/(\d\d\d\d):(\d+):(\d+):(\d+)#)
+        or
+        ($year, $mon, $day, $hour, $min, $sec) = 
+            ($data =~ m#(\d\d\d\d)-(\d+)-(\d+) (\d+):(\d+):(\d+)#)
     ) {
-        my $mon = $months{$monstr};
+        $mon = $months{$monstr} if defined $monstr;
         my $yr = $year - 1900;
         my $m = $mon - 1;
         my $epoch = timelocal($sec, $min, $hour, $day, $m, $year);

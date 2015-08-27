@@ -4,15 +4,14 @@
 use FileHandle;
 use sigtrap handler => \&ending, 'normal-signals';
 
-open LOG, ">> /usr/local/apache2.4/testers/caps.log" or die "can't open log: $!";
+open LOG, ">> /usr/local/apache2.4/testers/echo.log" or die "can't open log: $!";
 LOG->autoflush(1);
 STDOUT->autoflush(1);
 print LOG scalar(localtime)," $0 started\n";
 
 while (<>) {
     chomp;
-    print "\U$_\n";
-    print LOG scalar(localtime)," got: $_ sent: \U$_\n";
+    print "$_\n";
 }
 
 sub ending {

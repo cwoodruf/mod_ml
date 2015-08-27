@@ -4,7 +4,8 @@ use strict;
 
 use IO::Socket::UNIX qw( SOCK_STREAM );
 
-my $socket_path = '/tmp/usock.sock';
+my $socket_path = '/tmp/usocktest.sock';
+print "connecting to $socket_path\n";
 
 my $socket = IO::Socket::UNIX->new(
    Type => SOCK_STREAM,
