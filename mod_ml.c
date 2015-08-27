@@ -1001,8 +1001,11 @@ static void ml_register_hooks(apr_pool_t *p)
      * fixups and header_parser appear to be
      * the only places where setting an
      * environment variable will be detected by mod_rewrite (?)
+     * 2015-08-26: turns out the order of the LoadModule directives 
+     *             affects when hooks get run - putting mod_ml before 
+     *             mod_rewrite allows mod_rewrite to see mod_ml's changes
      */
-    ap_hook_fixups(ml_classifier_hook, NULL, NULL, APR_HOOK_LAST);
+    ap_hook_fixups(ml_classifier_hook, NULL, NULL, APR_HOOK_REALLY_FIRST);
 
     /* display configuration using SetHandler ml */
     ap_hook_handler(ml_handler, NULL, NULL, APR_HOOK_REALLY_FIRST);
