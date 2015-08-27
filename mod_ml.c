@@ -1002,7 +1002,7 @@ static void ml_register_hooks(apr_pool_t *p)
      * the only places where setting an
      * environment variable will be detected by mod_rewrite (?)
      */
-    ap_hook_fixups(ml_classifier_hook, NULL, NULL, APR_HOOK_FIRST);
+    ap_hook_fixups(ml_classifier_hook, NULL, NULL, APR_HOOK_LAST);
 
     /* display configuration using SetHandler ml */
     ap_hook_handler(ml_handler, NULL, NULL, APR_HOOK_REALLY_FIRST);
