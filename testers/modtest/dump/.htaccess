@@ -13,7 +13,7 @@
     MLFeatures cgi greeting name
 
     MLFeatures literal "request time based data"
-    MLFeatures time epoch date=%Y-%m-%d millis epoch ctime rfc822
+    MLFeatures time epoch date=%Y-%m-%d micros now elapsed millis epoch ctime rfc822
 
     MLFeatures literal "request struct"
     MLFeatures request args content_type content_encoding filename handler 
@@ -62,17 +62,17 @@
     MLFeatures auth secret2=blergh2
     MLFeatures auth secret3=blergh3
 
-    MLClassifier proc /srv/cal/src/apache/ml/testers/echo.pl
+    MLClassifier proc /usr/local/bin/echo.pl
     MLOutFormat quoted
-    MLClassifier proc /srv/cal/src/apache/ml/testers/echo.pl
+    MLClassifier proc /usr/local/bin/echo.pl
     MLOutFormat csv
-    MLClassifier proc /srv/cal/src/apache/ml/testers/echo.pl
+    MLClassifier proc /usr/local/bin/echo.pl
     MLOutFormat jsonarray
-    MLOutProc proc /srv/cal/src/apache/ml/testers/caps.pl
-    MLClassifier proc /srv/cal/src/apache/ml/testers/echo.pl
+    MLOutProc proc /usr/local/bin/caps.pl
+    MLClassifier proc /usr/local/bin/echo.pl
     MLOutFormat jsonfields
     MLOutProc regex 's/([A-Z]+)/$1$1/g'
-    MLClassifier proc /srv/cal/src/apache/ml/testers/echo.pl
+    MLClassifier proc /usr/local/bin/echo.pl
 
     SetHandler ml
 </IfModule>

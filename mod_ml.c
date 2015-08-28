@@ -1200,6 +1200,17 @@ static char *_ml_hex(apr_pool_t *p, unsigned char d[])
             d[14], d[15], d[16], d[17], d[18], d[19]);
 }
 
+/* 
+ * from http://stackoverflow.com/questions/1952290 
+ * get system time in microseconds 
+ */
+static unsigned long long microtime() 
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (unsigned long long)(tv.tv_sec) * 1000000 + (unsigned long long)(tv.tv_usec);
+}
+
 /* get data from various sources */
 static char * _ml_get(
         request_rec *r, 
@@ -1262,20 +1273,21 @@ static char * _ml_get(
 
         case ML_TIME:
             {
-                if (!strcmp(field,"millis")) {
+                if (!strcmp(field,"micros")) {
                     return apr_psprintf(p, "%llu", (unsigned long long)r->request_time);
                 }
-                if (!strcmp(field,"epoch")) {
+                if (!strcmp(field,"millis")) {
                     return apr_psprintf(p, "%llu", (unsigned long long)r->request_time/1000);
                 }
-                if (!strcmp(field,"now")) {
+                if (!strcmp(field,"epoch")) {
+                    return apr_psprintf(p, "%llu", (unsigned long long)r->request_time/1000/1000);
+                }
+                if (!strcmp(field,"elapsed")) {
                     /* from http://stackoverflow.com/questions/1952290 */
-                    struct timeval tv;
-                    gettimeofday(&tv, NULL);
-                    unsigned long long now =
-                            (unsigned long long)(tv.tv_sec) * 1000 +
-                                (unsigned long long)(tv.tv_usec) / 1000;
-                    return apr_psprintf(p, "%llu", (unsigned long long)now);
+                    return apr_psprintf(p, "%llu", (microtime() - (unsigned long long)r->request_time));
+                }
+                if (!strcmp(field,"now")) {
+                    return apr_psprintf(p, "%llu", microtime());
                 }
                 if (!strcmp(field,"ctime")) {
                     char *t = apr_pcalloc(p, ML_TIME_LEN);
