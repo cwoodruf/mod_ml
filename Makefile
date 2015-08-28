@@ -9,7 +9,7 @@ builddir=.
 # include /usr/share/apache2/build/special.mk
 top_srcdir=/usr/local/apache2.4
 top_builddir=/usr/local/apache2.4
-include /usr/local/apache2.4/build/special.mk
+# include /usr/local/apache2.4/build/special.mk
 
 #   the used tools
 APXS=/usr/local/apache2.4/bin/apxs

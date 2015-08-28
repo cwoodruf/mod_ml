@@ -1263,10 +1263,19 @@ static char * _ml_get(
         case ML_TIME:
             {
                 if (!strcmp(field,"millis")) {
-                    return apr_ltoa(p, r->request_time);
+                    return apr_psprintf(p, "%llu", (unsigned long long)r->request_time);
                 }
                 if (!strcmp(field,"epoch")) {
-                    return apr_ltoa(p, r->request_time/1000);
+                    return apr_psprintf(p, "%llu", (unsigned long long)r->request_time/1000);
+                }
+                if (!strcmp(field,"now")) {
+                    /* from http://stackoverflow.com/questions/1952290 */
+                    struct timeval tv;
+                    gettimeofday(&tv, NULL);
+                    unsigned long long now =
+                            (unsigned long long)(tv.tv_sec) * 1000 +
+                                (unsigned long long)(tv.tv_usec) / 1000;
+                    return apr_psprintf(p, "%llu", (unsigned long long)now);
                 }
                 if (!strcmp(field,"ctime")) {
                     char *t = apr_pcalloc(p, ML_TIME_LEN);
