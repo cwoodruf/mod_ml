@@ -1273,6 +1273,7 @@ static char * _ml_get(
 
         case ML_TIME:
             {
+                /* time at start of request */
                 if (!strcmp(field,"micros")) {
                     return apr_psprintf(p, "%llu", (unsigned long long)r->request_time);
                 }
@@ -1282,13 +1283,15 @@ static char * _ml_get(
                 if (!strcmp(field,"epoch")) {
                     return apr_psprintf(p, "%llu", (unsigned long long)r->request_time/1000/1000);
                 }
+                /* use system time to see how long processing is taking */
                 if (!strcmp(field,"elapsed")) {
-                    /* from http://stackoverflow.com/questions/1952290 */
                     return apr_psprintf(p, "%llu", (microtime() - (unsigned long long)r->request_time));
                 }
+                /* current system time */
                 if (!strcmp(field,"now")) {
                     return apr_psprintf(p, "%llu", microtime());
                 }
+                /* time at start of request in various string formats */
                 if (!strcmp(field,"ctime")) {
                     char *t = apr_pcalloc(p, ML_TIME_LEN);
                     apr_ctime(t, r->request_time);
