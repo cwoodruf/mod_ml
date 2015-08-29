@@ -7,11 +7,11 @@ use Getopt::Std;
 use strict;
 my %opt;
 getopts('l:p:',\%opt);
-my $log = $opt{l} || "/usr/local/apache2.4/htdocs/modtest/preprocess/index.txt";
-system "touch $log";
-die "invalid log $log" unless -f $log;
 my $port = $opt{p} || '7777';
 die "invalid port $port" unless $port =~ /^\d{0,5}$/;
+my $log = $opt{l} || "/usr/local/apache2.4/testers/evenport-$port.log";
+system "touch $log";
+die "invalid log $log" unless -f $log;
 
 # auto-flush on socket
 $| = 1;
@@ -22,7 +22,7 @@ LOG->autoflush(1);
 # creating a listening socket
 my $socket = new IO::Socket::INET (
     LocalHost => '0.0.0.0',
-    LocalPort => '37777',
+    LocalPort => $port,
     Proto => 'tcp',
     Listen => 5,
     Reuse => 1
@@ -46,7 +46,8 @@ while(1)
     print LOG "received data: $data\n";
 
     # write response data to the connected client
-    $data = "OK\n\n";
+    my $iseven = ($port % 2 ? "ODD": "EVEN");
+    $data = "$iseven\n";
     $client_socket->send($data);
 
     # notify client that response has been sent

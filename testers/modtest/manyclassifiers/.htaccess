@@ -1,0 +1,10 @@
+<IfModule ml_module>
+    MLEnabled On
+    MLFieldProc proc /usr/local/bin/setport.pl env myport
+    MLFeatures env myport=REMOTE_ADDR
+    MLClassResponse EVEN env ipeven=yes
+    MLClassResponse ODD env ipeven=no
+    MLClassResponse "" env ipeven=unknown
+    MLClassifier ip localhost:%{env:myport}
+    SetHandler ml
+</IfModule>

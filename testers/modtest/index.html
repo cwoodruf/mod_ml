@@ -33,7 +33,11 @@ div.explain {
     uses same configuration as dump but with &quot;MLEnabled off&quot;</li>
     <li>example IP preprocessor: <a href="preprocess-run">click here to add a line to</a>: 
     <a href="preprocess/index.txt">sock.log</a></li>
-    <li>generate http code: <a href="httpcode">click here to get a random 404|302</a> (the index.html page does exist)</li>
+    <li>generate http code: <a href="httpcode">click here to get a random 404|302</a></li>
+    <li>dynamic classifier selection: <a href="multiclass">click here to set envvar ipeven</a><br>
+    the request's IP address is evaluated by /usr/local/bin/setport.pl which determines the port<br>
+    used by the classifier (/usr/local/bin/evenport.pl run on ports 55556 and 55557) the classifier<br>
+    run on port 55557 always returns ODD and the one of port 55556 always returns EVEN</li>
 </ul>
 </div>
 </body>

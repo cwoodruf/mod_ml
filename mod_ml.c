@@ -66,15 +66,20 @@
  * these functions make key strings for various hashes
  * have to use strings in the hash or keys that are the same get lost (?) 
  */
-/* key for the field processor hash */
+
+/* 
+ * key for the field processor hash 
+ */
 static const APR_INLINE char *_ml_fkey(
         apr_pool_t *p, 
         const ml_feature_t *fp
 ) {
-    return apr_psprintf(p, "%d:%s", fp->fieldtype, fp->field);
+    return apr_psprintf(p, "%d:%s", fp->fieldtype, fp->name);
 }
 
-/* key for processor hash - uses explicit proctype and proc */
+/* 
+ * key for processor hash - uses explicit proctype and proc 
+ */
 static const APR_INLINE char *_ml_pkey2(
         apr_pool_t *p, 
         const ml_proctype pt, 
@@ -138,7 +143,9 @@ static char * _ml_feature_str(
     return conf;
 }
 
-/* make class responses string */
+/* 
+ * make class responses string 
+ */
 static char *_ml_cr_str(
         const char *what, 
         apr_hash_t *classresponse, 
@@ -173,7 +180,9 @@ static char *_ml_cr_str(
     return conf;
 }
 
-/* print details processors including fields and class responders */
+/* 
+ * print details processors including fields and class responders 
+ */
 static char *_ml_proc_str(
         const char *what,
         ml_directives_t *sc,
@@ -201,7 +210,9 @@ static char *_ml_proc_str(
     return conf;
 }
 
-/* make a string with our entire config in it */
+/* 
+ * make a string with our entire config in it 
+ */
 static char * _ml_conf_str(
         ml_directives_t *sc, 
         apr_pool_t *p 
@@ -252,7 +263,9 @@ static char * _ml_conf_str(
     return conf;
 }
 
-/* log our configuration somewhere log or stdout */
+/* 
+ * log our configuration somewhere log or stdout 
+ */
 static void _ml_log_conf_tok(
         server_rec *ctx, 
         apr_pool_t *p, 
@@ -268,7 +281,10 @@ static void _ml_log_conf_tok(
         line = apr_strtok(NULL, "\n", &last);
     }
 }
-/* for logging during startup */
+
+/* 
+ * for logging during startup 
+ */
 static void _ml_log_conf(
         apr_pool_t *p, 
         ml_directives_t *conf, 
@@ -276,7 +292,10 @@ static void _ml_log_conf(
 ) {
     _ml_log_conf_tok(NULL, p, conf, where);
 }
-/* for logging during a request */
+
+/* 
+ * for logging during a request 
+ */
 static void _ml_clog_conf(request_rec *r, ml_directives_t *conf, char *where)
 {
     _ml_log_conf_tok(r->server, r->pool, conf, where);
@@ -287,6 +306,7 @@ static void _ml_clog_conf(request_rec *r, ml_directives_t *conf, char *where)
  Functions to handle configuration
  ==============================================================================
  */
+
 /*
  * turns module on or off
  */
@@ -329,6 +349,29 @@ static const char *ml_set_outformat(
 
     return NULL;
 }  
+
+/* 
+ * set various fields for an ip service helper 
+ */
+static void _ml_set_ip_helper(apr_pool_t *p, ml_proc_t *fp) 
+{
+    char *host;
+    char *scope;
+    apr_port_t port;
+    int rc = apr_parse_addr_port(
+            &host, &scope, &port, fp->proc, p);
+    if (rc != APR_SUCCESS || host == NULL || port == 0) {
+        ap_log_error(APLOG_MARK, APLOG_ERR, rc, NULL, 
+                     "mod_ml: no host:port in %s", fp->proc);
+        return;
+    }
+    fp->helper = apr_pcalloc(p, sizeof(ml_ip_t));
+    ml_ip_t *helper = fp->helper;
+    helper->host = host;
+    helper->scope = scope;
+    helper->port = port;
+    helper->family = (strchr(host,':') ? APR_INET6 : APR_INET);
+}
 
 /*
  * helpers are processors of input
@@ -381,22 +424,9 @@ static void _ml_proc_set_helper(apr_pool_t *p, ml_proc_t *fp)
             break;
         case ML_IP:
             {
-                char *host;
-                char *scope;
-                apr_port_t port;
-                int rc = apr_parse_addr_port(
-                        &host, &scope, &port, fp->proc, p);
-                if (rc != APR_SUCCESS || host == NULL || port == 0) {
-                    ap_log_error(APLOG_MARK, APLOG_ERR, rc, NULL, 
-                                 "mod_ml: no host:port in %s", fp->proc);
-                    return;
-                }
-                fp->helper = apr_pcalloc(p, sizeof(ml_ip_t));
-                ml_ip_t *helper = fp->helper;
-                helper->host = host;
-                helper->scope = scope;
-                helper->port = port;
-                helper->family = (strchr(host,':') ? APR_INET6 : APR_INET);
+                /* defer processing of ip if we have a variable */
+                if (strchr(fp->proc,'%')) break;
+                _ml_set_ip_helper(p, fp);
             }
             break;
         case ML_SOCK:
@@ -416,7 +446,127 @@ static void _ml_proc_set_helper(apr_pool_t *p, ml_proc_t *fp)
     }
 }
 
-/* use copy of string to make name value pair */
+/*
+ * scan a specific list of fields for a specific field
+ */
+static ml_feature_t *_ml_scan_fields(
+    apr_array_header_t *list,
+    ml_fieldtype ft, 
+    char *name
+) {
+    int i;
+    int end;
+    ml_feature_t *feats = (ml_feature_t *)list->elts;
+    end = list->nelts;
+    for (i = 0; i < end; i++) {
+        if (feats[i].fieldtype == ft && !strcmp(feats[i].name, name)) {
+            return &feats[i];
+        }
+    }
+    return NULL;
+}
+
+/*
+ * scan the labels and features for this proc and 
+ * try to match a field by fieldtype and name
+ */
+static ml_feature_t *_ml_scan_feature_lists(
+    ml_proc_t *pr, 
+    char *fieldtype, 
+    char *name
+) {
+    ml_fieldtype *ft = _ml_ft(fieldtype);
+    ml_feature_t *f = _ml_scan_fields(pr->labels, *ft, name);
+    if (f == NULL) {
+        f = _ml_scan_fields(pr->features, *ft, name);
+    }
+    return f;
+}
+
+/*
+ * look for strings in the form of %{<fieldtype>:<fieldname>} in the proc string and replace 
+ * this function is assumed to run after all the field processing has happened
+ * currently only used for ip processes that do classification or preprocessing
+ */
+static char *_ml_proc_set_vars(request_rec *r, ml_proc_t *pr)
+{
+    apr_pool_t *p = r->pool;
+    if (pr->role != ML_CLASSIFIER && pr->role != ML_PREPROCESSOR) {
+        return pr->proc;
+    }
+    if (!strchr(pr->proc,'%')) {
+        return pr->proc;
+    }
+
+    char *last;
+    char *start;
+    char *end;
+    char *remaining;
+    char *var;
+
+    char *procin = apr_pstrdup(p, pr->proc);
+    char *tok = apr_strtok(procin, "%", &last);
+    /* procin will now be 0 terminated whereever % was */
+    char *procout = apr_pstrdup(p, procin);
+    while (tok != NULL) {
+        start = strchr(tok,'{');
+        remaining = end = strchr(tok,'}');
+        /* judgement call: assume only one {type:name} string after %
+         * judgement call: leaving out malformed variable strings 
+         */
+        if (start != NULL && end != NULL && start < end) {
+            start++;
+            *end = '\0';
+            remaining++;
+            end--;
+            if (end > start) {
+                var = strchr(start,':');
+                if (var != NULL) {
+                    *var = '\0';
+                    var++;
+                    if (var < end) {
+                        ml_feature_t *f = _ml_scan_feature_lists(pr, start, var);
+                        /* judgement call: this only gets run after fields have been processed */
+                        if (f != NULL && f->clean != NULL) {
+                            procout = apr_pstrcat(p, procout, f->clean, NULL);
+                        }
+                    }
+                }
+            }
+        }
+        tok = apr_strtok(NULL, "%", &last);
+        /* remaining will be zero terminated now where % was */
+        if (remaining != NULL && *remaining != '\0') {
+            procout = apr_pstrcat(p, procout, remaining, NULL);
+        }
+    }
+    return procout;
+}
+
+/* 
+ * shallow copy a ml_proc_t struct but replace proc vars with values from features or labels
+ * the variable syntax is similar to mod_rewrite %{fieldtype:fieldname}
+ */
+static ml_proc_t *_ml_proc_setup(request_rec *r, ml_proc_t *pr)
+{
+    apr_pool_t *p = r->pool;
+    ml_proc_t *prcp = apr_pcalloc(p, sizeof(ml_proc_t));
+    prcp->role = pr->role;  
+    prcp->proctype = pr->proctype;
+    prcp->outformat = pr->outformat; 
+    prcp->features = pr->features;
+    prcp->labels = pr->labels; 
+    prcp->classresponse = pr->classresponse; 
+    prcp->def_fp = pr->def_fp;
+    prcp->out_fp = pr->out_fp;
+    prcp->proc = _ml_proc_set_vars(r, pr);
+    _ml_proc_set_helper(p, prcp);
+    return prcp;
+}
+
+/* 
+ * use copy of string to make name value pair 
+ */
 static char *_ml_split_at(
         char at, 
         const char *fieldv, 
@@ -433,7 +583,9 @@ static char *_ml_split_at(
     return field;
 }
 
-/* sets the feature's name and field, handles names with = signs in them */
+/* 
+ * sets the feature's name and field, handles names with = signs in them 
+ */
 void _ml_set_feat_name(
         apr_pool_t *p, 
         ml_feature_t *feat, 
@@ -672,7 +824,9 @@ static const char *ml_set_classifier(
             (ml_directives_t *)config, proctype, proc, ML_CLASSIFIER);
 }
 
-/* things to feed in to the preprocessor or classifier */
+/* 
+ * things to feed in to the preprocessor or classifier 
+ */
 static const char *_ml_add_feat(
         apr_pool_t *p, 
         ml_directives_t *c,
@@ -691,7 +845,8 @@ static const char *_ml_add_feat(
     return NULL;
 }
 
-/* restart various lists
+/* 
+ * restart various lists
  * features may have been saved via MLFieldProc 
  * directives so need to replace those 
  * also may be the case that a processing directive
@@ -718,7 +873,9 @@ static void _ml_restart_lists(
     }
 }
 
-/* add to our list of features */
+/* 
+ * add to our list of features 
+ */
 static const char *ml_set_features(
         cmd_parms *cmd, 
         void *config, 
@@ -885,7 +1042,9 @@ static const command_rec ml_directives[] =
     { NULL }
 };
 
-/* build a blank directory conf - also build maps to read directives */
+/* 
+ * build a blank directory conf - also build maps to read directives 
+ */
 static void* ml_create_dir_conf(apr_pool_t *pool, char *x)
 {
     ml_directives_t *ml = apr_pcalloc(pool, sizeof(ml_directives_t));
@@ -952,7 +1111,9 @@ static void* ml_create_dir_conf(apr_pool_t *pool, char *x)
     return ml;
 }
 
-/* create per-server config structures */
+/* 
+ * create per-server config structures 
+ */
 static void* ml_create_svr_conf(apr_pool_t *pool, server_rec *s)
 {
     ml_directives_t *ml = ml_create_dir_conf(pool,NULL);
@@ -972,7 +1133,9 @@ static void* ml_merge_dir_conf(apr_pool_t *pool, void *BASE, void *ADD)
     return ADD;
 }
 
-/* merge  per-server config structures */
+/* 
+ * merge  per-server config structures 
+ */
 static void* ml_merge_svr_conf(apr_pool_t *pool, void *BASE, void *ADD)
 {
     _ml_log("merging server using dir function");
@@ -987,7 +1150,9 @@ static int ml_classifier_hook(request_rec *r);
 static int ml_handler(request_rec *r); 
 static int ml_log_after(request_rec *r);
 
-/* map handler to server event ... */
+/* 
+ * map handler to server event ... 
+ */
 static void ml_register_hooks(apr_pool_t *p)
 {
     /* defined in mod_rewrite_funcs.c */
@@ -1111,12 +1276,16 @@ static int _ml_send_to_ip(
         char response[],
         apr_size_t item_size
 ) {
-    if (pr->helper == NULL) return APR_SUCCESS;
-
     apr_socket_t *sock;
     apr_sockaddr_t *sockaddr;
     apr_status_t status;
+    /* this is an indicator we have to replace variables */
+    if (strchr(pr->proc,'%')) {
+        ml_proc_t *prcp = _ml_proc_setup(request, pr);
+        pr = prcp;
+    }
     ml_ip_t *helper = (ml_ip_t *)pr->helper;
+    if (helper == NULL) return APR_SUCCESS;
 
     if (helper->host == NULL || strlen(helper->host) == 0) return APR_SUCCESS;
     if (helper->port <= 0) return APR_SUCCESS;
@@ -1189,7 +1358,9 @@ static int _ml_handling(request_rec *r)
 
 /* data processing stuff */
 
-/* turn a 20 element sha1 digest array to a 40 char hex string */
+/* 
+ * turn a 20 element sha1 digest array to a 40 char hex string 
+ */
 static char *_ml_hex(apr_pool_t *p, unsigned char d[])
 {
     return apr_psprintf(p,
@@ -1211,7 +1382,9 @@ static unsigned long long microtime()
     return (unsigned long long)(tv.tv_sec) * 1000000 + (unsigned long long)(tv.tv_usec);
 }
 
-/* get data from various sources */
+/* 
+ * get data from various sources 
+ */
 static char * _ml_get(
         request_rec *r, 
         ml_fieldtype ft, 
@@ -1486,7 +1659,9 @@ static char * _ml_get(
     }
 }
 
-/* apply a regex to change some raw data substitute and match both work*/
+/* 
+ * apply a regex to change some raw data substitute and match both work
+ */
 static char *_ml_apply_regex(request_rec *r, char *raw, ml_regex_t *helper) 
 {
     /* for this to work the pattern MUST have form of m/(.*)/ or s/(.*)/$1/ */
@@ -1504,12 +1679,14 @@ static char *_ml_apply_regex(request_rec *r, char *raw, ml_regex_t *helper)
     return raw;
 }
 
-/* use a helper to transform some raw data */
+/* 
+ * use a helper to transform some raw data 
+ */
 static char *_ml_apply_helper(request_rec *r, ml_proc_t *fp, char *raw)
 {
     if (fp == NULL) return raw;
     if (raw == NULL) return raw;
-    if (fp->helper == NULL) return raw;
+    if (fp->helper == NULL && fp->proctype != ML_IP) return raw;
 
     switch (fp->proctype) {
         case ML_REGEX: 
@@ -1538,14 +1715,16 @@ static char *_ml_apply_helper(request_rec *r, ml_proc_t *fp, char *raw)
     }
 }
 
-/* given a field proc get the field data and clean it */
+/* 
+ * given a field proc get the field data and clean it 
+ */
 static void _ml_clean(
         request_rec *r, 
         ml_directives_t *c,
         ml_field_proc_t *fp, 
         ml_feature_t *feature
 ) {
-    feature->raw = _ml_get(r, fp->fieldtype, fp->field, c);
+    feature->raw = _ml_get(r, feature->fieldtype, feature->field, c);
     if (feature->raw == NULL) {
         feature->clean = NULL;
         return;
@@ -1581,7 +1760,9 @@ static void _ml_clean(
     }
 }
 
-/* grab and clean field data on a best efforts basis */
+/* 
+ * grab and clean field data on a best efforts basis 
+ */
 static void _ml_process_fields(
         request_rec *r, 
         ml_directives_t *c, 
@@ -1610,14 +1791,18 @@ static void _ml_process_fields(
     }
 }
 
-/* dump our internal configuration data */
+/* 
+ * dump our internal configuration data 
+ */
 static void _ml_print_conf(request_rec *r, ml_directives_t *sc, char *msg) {
     if (!_ml_handling(r)) return;
     ap_rprintf(r, "\n%s\n", msg);
     ap_rprintf(r, "%s", _ml_conf_str(sc, r->pool));
 }
 
-/* add \s to " characters in a string */
+/* 
+ * add \s to " characters in a string 
+ */
 static char *_ml_esc_quotes(apr_pool_t *p, char *str)
 {
     if (strchr(str, '"') != NULL) {
@@ -1637,7 +1822,9 @@ static char *_ml_esc_quotes(apr_pool_t *p, char *str)
     return str;
 }
 
-/* concatenate features into a string - uses MLOutFormat */
+/* 
+ * concatenate features into a string - uses MLOutFormat 
+ */
 static char *_ml_feature_cat(
         request_rec *r, 
         int *fcount, 
@@ -1698,7 +1885,9 @@ static char *_ml_feature_cat(
     return fstr;
 }
 
-/* build a string of features to send to an external process */
+/* 
+ * build a string of features to send to an external process 
+ */
 static char *_ml_feature_string(
         request_rec *r, 
         ml_directives_t *c,
@@ -1756,7 +1945,9 @@ static char *_ml_feature_string(
     return featstr;
 }
 
-/* make copy of cookie string with one cookie removed */
+/* 
+ * make copy of cookie string with one cookie removed 
+ */
 static char *_ml_rm_cookie(request_rec *r,
         char *cookiep, const char *name)
 {
@@ -1841,7 +2032,9 @@ static char *_ml_ins_args(
     return argsout;
 }
 
-/* apply one class response for a specific class */
+/* 
+ * apply one class response for a specific class 
+ */
 static int _ml_apply_one_cr(request_rec *r, ml_directives_t *c, ml_cr_t *cr) 
 {
     if (cr == NULL || cr->action == NULL) return OK;
@@ -2015,7 +2208,9 @@ static int _ml_apply_one_cr(request_rec *r, ml_directives_t *c, ml_cr_t *cr)
     return OK;
 }
 
-/* apply class responses to a class */
+/* 
+ * apply class responses to a class 
+ */
 static int _ml_apply_crs(
         request_rec *r, 
         ml_directives_t *c, 
@@ -2042,7 +2237,9 @@ static int _ml_apply_crs(
 }
 
 
-/* preprocessing - where we don't use the response */
+/* 
+ * preprocessing - where we don't use the response 
+ */
 static int _ml_preprocess(request_rec *r, ml_directives_t *c)
 {
     int i;
@@ -2059,7 +2256,9 @@ static int _ml_preprocess(request_rec *r, ml_directives_t *c)
     return OK;
 }
 
-/* classification - where we keep the response */
+/* 
+ * classification - where we keep the response 
+ */
 static int _ml_classify(request_rec *r, ml_directives_t *c)
 {
     int i, rc;
@@ -2079,7 +2278,9 @@ static int _ml_classify(request_rec *r, ml_directives_t *c)
     return rc;
 }
 
-/* combine preprocess and classification */
+/* 
+ * combine preprocess and classification 
+ */
 static int _ml_process(request_rec *r, ml_directives_t *c)
 {
     int rc;
@@ -2091,7 +2292,10 @@ static int _ml_process(request_rec *r, ml_directives_t *c)
 /* 
  * the top level hook functions 
  */
-/* set up the environment for running a hook function */
+
+/* 
+ * set up the environment for running a hook function 
+ */
 static ml_directives_t *_ml_setup_conf(request_rec *r)
 {
     ap_add_common_vars(r);
@@ -2110,7 +2314,9 @@ static ml_directives_t *_ml_setup_conf(request_rec *r)
     return dc;
 }
 
-/* do classification as part of http processing */
+/* 
+ * do classification as part of http processing 
+ */
 static int ml_classifier_hook(request_rec *r) 
 {
     ml_directives_t *dc = _ml_setup_conf(r);
@@ -2127,7 +2333,9 @@ static int ml_classifier_hook(request_rec *r)
     return _ml_classify(r, dc);
 }
 
-/* this handler is only place where features can be parsed */
+/* 
+ * this handler is only place where features can be parsed 
+ */
 static int ml_handler(request_rec *r) 
 {
     ml_directives_t *dc = _ml_setup_conf(r);
@@ -2149,7 +2357,9 @@ static int ml_handler(request_rec *r)
     return OK;
 }
 
-/* this is the main hook for the preprocess step */
+/* 
+ * this is the main hook for the preprocess step 
+ */
 static int ml_log_after(request_rec *r)
 {
     ml_directives_t *dc = _ml_setup_conf(r);
