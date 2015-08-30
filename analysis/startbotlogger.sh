@@ -6,7 +6,7 @@
 # well in production under heavy load
 cd /srv/cal/src/apache/ml/analysis
 port=39992
-log=../../ml_logs/botlogger-$port-`/bin/date +%Y%m%d`
+log=../../ml_logs/botlogger-$port-`/bin/date +%Y%m%d_%H%M%S`
 
 echo starting botlogger.py on port $port log is $log
 ./botlogger.py $port /etc/hosts >> $log 2>&1 &

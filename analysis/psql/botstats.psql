@@ -1,35 +1,20 @@
 --
 -- PostgreSQL database dump
 --
-
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SET check_function_bodies = false;
-SET client_min_messages = warning;
-
-SET search_path = public, pg_catalog;
-
-ALTER TABLE ONLY public.botwhohas DROP CONSTRAINT botwhohas_pkey;
+\echo delete everything
 ALTER TABLE ONLY public.botlog DROP CONSTRAINT botlog_pkey1;
 ALTER TABLE ONLY public.botlatest DROP CONSTRAINT botlog_pkey;
 ALTER TABLE public.botlog ALTER COLUMN logid DROP DEFAULT;
-DROP TABLE public.botwhohas;
 DROP TABLE public.botstats;
 DROP SEQUENCE public.botlog_logid_seq;
 DROP TABLE public.botlog;
 DROP TABLE public.botlatest;
-SET search_path = public, pg_catalog;
 
-SET default_tablespace = '';
-
-SET default_with_oids = false;
 
 --
 -- Name: botlatest; Type: TABLE; Schema: public;  Tablespace: 
 --
-
+\echo create botlatest
 CREATE TABLE botlatest (
     hour integer,
     remote_addr character varying(128) NOT NULL,
@@ -46,7 +31,7 @@ CREATE TABLE botlatest (
 --
 -- Name: botlog; Type: TABLE; Schema: public;  Tablespace: 
 --
-
+\echo create botlog
 CREATE TABLE botlog (
     hour integer,
     remote_addr character varying(128) NOT NULL,
@@ -82,7 +67,7 @@ CREATE SEQUENCE botlog_logid_seq
 --
 -- Name: botstats; Type: TABLE; Schema: public;  Tablespace: 
 --
-
+\echo create botstats
 CREATE TABLE botstats (
     ip character varying(64) NOT NULL,
     n integer,
@@ -111,7 +96,9 @@ CREATE TABLE botstats (
     htn integer,
     uas character varying(512)[],
     class integer,
-    prediction integer
+    prediction integer,
+    sample bigint,
+    label character varying(32)
 );
 
 
@@ -137,14 +124,6 @@ ALTER TABLE ONLY botlatest
 
 ALTER TABLE ONLY botlog
     ADD CONSTRAINT botlog_pkey1 PRIMARY KEY (logid);
-
-
---
--- Name: botwhohas_pkey; Type: CONSTRAINT; Schema: public;  Tablespace: 
---
-
-ALTER TABLE ONLY botwhohas
-    ADD CONSTRAINT botwhohas_pkey PRIMARY KEY (ip);
 
 
 --

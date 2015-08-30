@@ -90,7 +90,7 @@ static const APR_INLINE char *_ml_pkey2(
 
 /* 
  * given such a complicated config need some way to view it 
- * display a list of features or labels and their associated cleanup helpers 
+ * display a list of features or vars and their associated cleanup helpers 
  */
 static char * _ml_feature_str(
         const char *what,
@@ -199,8 +199,8 @@ static char *_ml_proc_str(
 
         conf = _ml_feature_str("features", 
                 proc[i].features, sc->cleaners, sc->fieldprocs, &conf, p);
-        conf = _ml_feature_str("labels", 
-                proc[i].labels, sc->cleaners, sc->fieldprocs, &conf, p);
+        conf = _ml_feature_str("vars", 
+                proc[i].vars, sc->cleaners, sc->fieldprocs, &conf, p);
         if (proc[i].role == ML_CLASSIFIER) 
             conf = _ml_cr_str(apr_psprintf(p, "crs for %s", proc[i].proc), 
                                 proc[i].classresponse, &conf, p);
@@ -232,9 +232,9 @@ static char * _ml_conf_str(
         conf = _ml_feature_str("left over features", 
                 sc->features, sc->cleaners, sc->fieldprocs, &conf, p);
     }
-    if (sc->labels != NULL) {
-        conf = _ml_feature_str("left over labels", 
-                sc->labels, sc->cleaners, sc->fieldprocs, &conf, p);
+    if (sc->vars != NULL) {
+        conf = _ml_feature_str("left over vars", 
+                sc->vars, sc->cleaners, sc->fieldprocs, &conf, p);
     }
     if (sc->classresponse != NULL) {
         conf = _ml_cr_str("left over crs", sc->classresponse, &conf, p);
@@ -467,7 +467,7 @@ static ml_feature_t *_ml_scan_fields(
 }
 
 /*
- * scan the labels and features for this proc and 
+ * scan the vars and features for this proc and 
  * try to match a field by fieldtype and name
  */
 static ml_feature_t *_ml_scan_feature_lists(
@@ -476,7 +476,7 @@ static ml_feature_t *_ml_scan_feature_lists(
     char *name
 ) {
     ml_fieldtype *ft = _ml_ft(fieldtype);
-    ml_feature_t *f = _ml_scan_fields(pr->labels, *ft, name);
+    ml_feature_t *f = _ml_scan_fields(pr->vars, *ft, name);
     if (f == NULL) {
         f = _ml_scan_fields(pr->features, *ft, name);
     }
@@ -490,7 +490,11 @@ static ml_feature_t *_ml_scan_feature_lists(
  */
 static char *_ml_proc_set_vars(request_rec *r, ml_proc_t *pr)
 {
+    if (r == NULL || pr == NULL) return NULL;
+    _ml_clog(r->server, "replace proc %s", pr->proc);
+
     apr_pool_t *p = r->pool;
+
     if (pr->role != ML_CLASSIFIER && pr->role != ML_PREPROCESSOR) {
         return pr->proc;
     }
@@ -507,7 +511,12 @@ static char *_ml_proc_set_vars(request_rec *r, ml_proc_t *pr)
     char *procin = apr_pstrdup(p, pr->proc);
     char *tok = apr_strtok(procin, "%", &last);
     /* procin will now be 0 terminated whereever % was */
-    char *procout = apr_pstrdup(p, procin);
+    char *procout;
+    if (tok == procin+1) {
+        procout = apr_pstrdup(p, "");
+    } else {
+        procout = apr_pstrdup(p, procin);
+    }
     while (tok != NULL) {
         start = strchr(tok,'{');
         remaining = end = strchr(tok,'}');
@@ -540,11 +549,12 @@ static char *_ml_proc_set_vars(request_rec *r, ml_proc_t *pr)
             procout = apr_pstrcat(p, procout, remaining, NULL);
         }
     }
+    _ml_clog(r->server, "proc before %s after %s", pr->proc, procout);
     return procout;
 }
 
 /* 
- * shallow copy a ml_proc_t struct but replace proc vars with values from features or labels
+ * shallow copy a ml_proc_t struct but replace proc vars with values from features or vars
  * the variable syntax is similar to mod_rewrite %{fieldtype:fieldname}
  */
 static ml_proc_t *_ml_proc_setup(request_rec *r, ml_proc_t *pr)
@@ -555,7 +565,7 @@ static ml_proc_t *_ml_proc_setup(request_rec *r, ml_proc_t *pr)
     prcp->proctype = pr->proctype;
     prcp->outformat = pr->outformat; 
     prcp->features = pr->features;
-    prcp->labels = pr->labels; 
+    prcp->vars = pr->vars; 
     prcp->classresponse = pr->classresponse; 
     prcp->def_fp = pr->def_fp;
     prcp->out_fp = pr->out_fp;
@@ -789,7 +799,7 @@ static const char *_ml_set_proc(
     p->role = role;
     p->proc = apr_pstrdup(cmd->pool, proc);
     p->features = c->features;
-    p->labels = c->labels;
+    p->vars = c->vars;
     p->outformat = c->outformat;
     p->out_fp = c->out_fp;
     p->def_fp = c->def_fp;
@@ -866,7 +876,7 @@ static void _ml_restart_lists(
         c->save_features = FALSE;
     }
     if (c->reset_features) {
-        c->labels = apr_array_make(cmd->pool, 1, sizeof(ml_feature_t));
+        c->vars = apr_array_make(cmd->pool, 1, sizeof(ml_feature_t));
         if (!featreset)
             c->features = apr_array_make(cmd->pool, 1, sizeof(ml_feature_t));
         c->reset_features = FALSE;
@@ -888,10 +898,10 @@ static const char *ml_set_features(
 }
 
 /* 
- * add to our list of labels 
- * apart from being sent to front of list labels not treated differently 
+ * add to our list of vars 
+ * apart from being sent to front of list vars not treated differently 
  */
-static const char *ml_set_labels(
+static const char *ml_set_vars(
         cmd_parms *cmd, 
         void *config, 
         const char *fieldtype, 
@@ -899,7 +909,7 @@ static const char *ml_set_labels(
 ) {
     ml_directives_t *c = (ml_directives_t *)config;
     _ml_restart_lists(cmd, c, FALSE);
-    return _ml_add_feat(cmd->pool, c, c->labels, fieldtype, field);
+    return _ml_add_feat(cmd->pool, c, c->vars, fieldtype, field);
 }
 
 /* 
@@ -977,7 +987,7 @@ static const char *ml_set_class_response(
                 _ml_proc_set_helper(p, cr->proc); 
                 cr->proc->outformat = c->outformat;
                 cr->proc->features = c->features;
-                cr->proc->labels = c->labels;
+                cr->proc->vars = c->vars;
                 c->reset_features = TRUE;
             }
             break;
@@ -1024,8 +1034,8 @@ static const command_rec ml_directives[] =
                     "Arguments: "
                     "{cgi|uri|header|env|cookie|time|literal|request|auth} "
                     "{field1, field2 ...}"),
-    AP_INIT_ITERATE2("MLLabels", ml_set_labels, NULL, OR_ALL,
-					"Label name(s) in order (used for supervised learning). "
+    AP_INIT_ITERATE2("MLVars", ml_set_vars, NULL, OR_ALL,
+					"Variables (not sent to preprocessors or classifiers) "
                     "Arguments: "
                     "{cgi|uri|header|env|cookie|time|literal|request|auth} "
                     "{field1, field2 ...}"),
@@ -1062,7 +1072,7 @@ static void* ml_create_dir_conf(apr_pool_t *pool, char *x)
     ml->features = apr_array_make(pool, 1, sizeof(ml_feature_t));
     ml->outformat = ML_OUT_NONE;
     ml->cgi = NULL; /* only create this if needed */
-    ml->labels = apr_array_make(pool, 1, sizeof(ml_feature_t)); 
+    ml->vars = apr_array_make(pool, 1, sizeof(ml_feature_t)); 
     ml->preprocessor = apr_array_make(pool, 1, sizeof(ml_proc_t)); 
     ml->classifier = apr_array_make(pool, 1, sizeof(ml_proc_t)); 
     ml->classresponse = apr_hash_make(pool);
@@ -1896,14 +1906,14 @@ static char *_ml_feature_string(
     apr_array_header_t *features = p->features;
     if (features == NULL) features = c->features;
 
-    apr_array_header_t *labels = p->labels;
-    if (labels == NULL) labels = c->labels;
+    apr_array_header_t *vars = p->vars;
+    if (vars == NULL) vars = c->vars;
 
     ml_outformat outformat = p->outformat;
     if (outformat == ML_OUT_NONE) outformat = c->outformat;
 
+    _ml_process_fields(r, c, p, vars);
     _ml_process_fields(r, c, p, features);
-    _ml_process_fields(r, c, p, labels);
 
     char *featstr = NULL;
 
@@ -1920,7 +1930,7 @@ static char *_ml_feature_string(
     }
 
     int fcount = 1;
-    featstr = _ml_feature_cat(r, &fcount, featstr, labels, outformat);
+    /* note that vars are not sent out but are used by ip processes */
     featstr = _ml_feature_cat(r, &fcount, featstr, features, outformat);
 
     if (outformat != ML_OUT_RAW && featstr[strlen(featstr)-1] == ',') 

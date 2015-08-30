@@ -219,7 +219,7 @@ typedef enum {
     ML_OUT_NONE
 } ml_outformat;
 
-/* features|labels to send to preprocessor or classifier */
+/* features|vars to send to preprocessor or classifier */
 typedef struct ml_feature {
     ml_fieldtype fieldtype;
     char *name;             /* what to display */
@@ -264,7 +264,7 @@ typedef struct ml_proc {
     /* specific features for processors, classifiers and class responses */
     ml_outformat outformat;       /* how to make output strings */
     apr_array_header_t *features; /* features associated with this proc */
-    apr_array_header_t *labels;   /* labels associated with this proc */
+    apr_array_header_t *vars;   /* vars associated with this proc */
     apr_hash_t *classresponse;    /* actions associated with class responses */
     struct ml_proc *def_fp;       /* how to clean fields w/o a specific cleaner */
     struct ml_proc *out_fp;       /* how to clean output */
@@ -305,7 +305,7 @@ typedef struct {
     apr_hash_t *cleaners;               /* used by fieldprocs to fix up input fields */
     apr_array_header_t *features;       /* feature input into preprocessor and classifier */
     apr_table_t *cgi;                   /* place to hold cgi data if needed */
-    apr_array_header_t *labels;         /* labels for supervised learning */
+    apr_array_header_t *vars;           /* vars for internal use - e.g modifying ip procs  */
     ml_outformat outformat;             /* how to make feature strings */
     apr_array_header_t *preprocessor;   /* how to preprocess input - doesn't send a response */
     apr_array_header_t *classifier;     /* how to classify input - sends a response */
