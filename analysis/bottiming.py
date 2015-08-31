@@ -10,6 +10,7 @@ import json
 import psycopg2
 import re
 import os
+import socket
 from mldb import dbname, dbuser, dbpw
 autocommit = True
 
@@ -103,7 +104,42 @@ MAXDIFFS = 1000
 # ignore anything over 2 days old - too extreme?
 OLD = 2 * 86400 * 1000
 
-def updatestats(ip,diffs,hourdiffs,hours,ucur,uconn):
+def get_prediction(data,stats,vw):
+    """
+    build a vw compatible string and get prediction 
+    from vw server if it exists
+    what the string looks like
+    | mean:0.666667 var:0.666667 skew:-0.19245 kurtosis:0 hmean:0 hvar:0 hskew:0 hkurtosis:0 htmean:0.125 htvar:8.625 htskew:0.187114 htkurtosis:-2.291937 poverr:0 uacount:1 errprop:0
+    """
+    if vw == None: 
+        return None
+    if stats is None or stats['reqs'] == 0: 
+        data['poverr'] = 1
+        data['uacount'] = 1
+        data['errprop'] = 0
+    else:
+        data['poverr'] = 0.0+stats['pages']/stats['reqs']
+        data['uacount'] = 0.0+len(stats['uas'])
+        data['errprop'] = 0.0+stats['errs']/stats['reqs']
+
+    features = "| mean:%(mean)s var:%(var)s skew:%(skew)s kurtosis:%(kurtosis)s hmean:%(hmean)s hvar:%(hvar)s hskew:%(hskew)s hkurtosis:%(hkurtosis)s htmean:%(htmean)s htvar:%(htvar)s htskew:%(htskew)s htkurtosis:%(htkurtosis)s poverr:%(poverr)s uacount:%(uacount)s errprop:%(errprop)s\n" % data
+    pred = None
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # vw should be a (host,port) tuple
+        s.connect(vw)
+        s.sendall(features)
+        s.shutdown(socket.SHUT_WR)
+        rawpred = s.recv(1024)
+        s.close()
+        pred = float(rawpred)
+        logging.debug("got prediction %f for %s" % (pred, features))
+    except:
+        pass
+    return pred
+
+
+def updatestats(ip,diffs,hourdiffs,hours,ucur,uconn,stats=None,vw=None):
     """updates botstats fields"""
     try:
         ucur.execute(
@@ -135,8 +171,8 @@ def updatestats(ip,diffs,hourdiffs,hours,ucur,uconn):
                     'htn':ht['n'], 'htsum':ht['sum'], 'htmean':ht['mean'], 
                     'htvar':ht['var'], 'htskew':ht['skew'], 'htkurtosis':ht['kurtosis']
                     }
-
             try:
+                data['pred'] = get_prediction(data,stats,vw)
                 ucur.execute(
                     """
                     update botstats set 
@@ -145,7 +181,8 @@ def updatestats(ip,diffs,hourdiffs,hours,ucur,uconn):
                         hn=%(hn)s, hsum=%(hsum)s, hmean=%(hmean)s, hvar=%(hvar)s, 
                         hskew=%(hskew)s, hkurtosis=%(hkurtosis)s, 
                         htn=%(htn)s, htsum=%(htsum)s, htmean=%(htmean)s, htvar=%(htvar)s, 
-                        htskew=%(htskew)s, htkurtosis=%(htkurtosis)s
+                        htskew=%(htskew)s, htkurtosis=%(htkurtosis)s,
+                        prediction=%(pred)s
                     where ip=%(ip)s
                     """, data)
                 if autocommit: uconn.commit()

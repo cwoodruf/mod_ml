@@ -41,7 +41,7 @@ import threading
 # latestlock = threading.Lock()
 # statslock = threading.Lock()
 
-def processlog(ipd,lastlogid,conn):
+def processlog(ipd,lastlogid,conn,vw=True):
     """ 
     read log entries for a specific ip and do stats 
     this should be considered a critical section
@@ -144,6 +144,7 @@ def processlog(ipd,lastlogid,conn):
             stats['hours'][log['hour']] += 1
             logcount += 1
 
+        stats['uas'] = list(uas);
         logging.debug("saving stats")
         logging.debug(stats)
         bt.updatestatcounts(
@@ -151,16 +152,17 @@ def processlog(ipd,lastlogid,conn):
             stats['reqs'],
             stats['pages'],
             stats['errs'],
-            list(uas),
+            stats['uas'],
             scur, conn)
 
-        if len(stats['diffs']) > 0 :
+        if len(stats['diffs']) > 0 and logcount > 0:
             bt.updatestats(
                 ipd['ip'],
                 stats['diffs'],
                 stats['hourdiffs'],
                 stats['hours'],
-                scur, conn)
+                scur, conn,
+                stats,vw)
 
         # delete what we have seen
         # note that more entries may have been added

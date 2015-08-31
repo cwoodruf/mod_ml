@@ -118,6 +118,17 @@ print "starting ",sys.argv[0]
 port = int(sys.argv[1]);
 whitelist = read_whitelist(sys.argv[2])
 
+# a vowpal wabbit host identified by host:port is optional
+if argc >= 4:
+    vwhost = sys.argv[3]
+    try:
+        vwlist = vwhost.split(':')
+        vw = (vwlist[0],int(vwlist[1]))
+        logger.vw = vw
+        print "using vw daemon ",logger.vw," for online predictions"
+    except:
+        print "error reading vw daemon ",vwhost
+
 noncepat = re.compile("nonce=(\w*):(\w*)")
 
 # the script will loop forever until interrupted ...

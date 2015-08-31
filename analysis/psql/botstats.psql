@@ -96,7 +96,7 @@ CREATE TABLE botstats (
     htn integer,
     uas character varying(512)[],
     class integer,
-    prediction integer,
+    prediction double precision,
     sample bigint,
     label character varying(32)
 );
