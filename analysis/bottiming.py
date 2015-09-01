@@ -214,11 +214,12 @@ def get_prediction(data,stats,services):
             rs = redis.Redis(services['redis'])
             
         if rs != None:
-            print "saving prediction to",data['ip']
-            if pred < 0.0:
-                rs.set(data['ip'],-1)
+            if pred >= 0.0 or stats['class'] == 1:
+                logging.debug("saving prediction bot (1) for %s" % data['ip'])
+                rs.set(data['ip'],1)
             else:
-                rs.set(data['ip'], 1)
+                logging.debug("saving prediction human (-1) for %s" % data['ip'])
+                rs.set(data['ip'],-1)
 
     except Exception as e:
         a, b, tb = sys.exc_info()
