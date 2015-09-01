@@ -214,7 +214,7 @@ def get_prediction(data,stats,services):
             rs = redis.Redis(services['redis'])
             
         if rs != None:
-            if pred >= 0.0 or stats['class'] == 1:
+            if pred >= 0.0 or stats['class'] >= 0:
                 logging.debug("saving prediction bot (1) for %s" % data['ip'])
                 rs.set(data['ip'],1)
             else:
