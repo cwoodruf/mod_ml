@@ -118,16 +118,42 @@ print "starting ",sys.argv[0]
 port = int(sys.argv[1]);
 whitelist = read_whitelist(sys.argv[2])
 
-# a vowpal wabbit host identified by host:port is optional
-if argc >= 4:
+# get services that the logger may need - these are specific to botlog/botupdclass/bottiming
+# a vowpal wabbit classifier host identified by host:port is optional
+if argc >= 5:
     vwhost = sys.argv[3]
     try:
         vwlist = vwhost.split(':')
         vw = (vwlist[0],int(vwlist[1]))
-        logger.vw = vw
-        print "using vw daemon ",logger.vw," for online predictions"
+        logger.services['vw'] = vw
+        print "using vw daemon",logger.services['vw'],"to make predictions"
     except:
-        print "error reading vw daemon ",vwhost
+        print "error reading vw classifier daemon ",vwhost
+
+    # a memcache server to save predictions to
+    logger.services['redis'] = sys.argv[4]
+    print "using redis-server",logger.services['redis'],"to save predictions"
+
+    # a vowpal wabbit learner host identified by host:port is optional - depends on ua classifier
+    if argc == 7:
+        vwhost = sys.argv[5]
+        try:
+            vwlist = vwhost.split(':')
+            vw = (vwlist[0],int(vwlist[1]))
+            logger.services['vw_learn'] = vw
+            print "using vw daemon ",logger.services['vw_learn']," for online learning"
+        except:
+            print "error reading vw learner daemon ",vwhost
+
+        # a useragent classifier identified by host:port is needed for vw_learn to work
+        uahost = sys.argv[6]
+        try:
+            ualist = uahost.split(':')
+            ua = (ualist[0],int(ualist[1]))
+            logger.services['ua'] = ua
+            print "using user agent classifier daemon ",logger.services['ua']
+        except:
+            print "error reading ua classifier daemon ",uahost
 
 noncepat = re.compile("nonce=(\w*):(\w*)")
 
@@ -139,7 +165,7 @@ try:
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_address = ('',port)
     sock.bind(server_address)
-    sock.listen(1)
+    sock.listen(8)
 
     for i in range(MAXTHREADS):
         t.append(threading.Thread(

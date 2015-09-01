@@ -37,8 +37,8 @@ import threading
 import botupdstats as upd
 import copy
 
-# for vowpal wabbit predictions - set in botlogger.py
-vw = None
+# for vowpal wabbit predictions/learning and ua classification - set in botlogger.py
+services = {'vw':None,'redis':None,'vw_learn':None,'ua':None}
 
 # used for resetting the db connection if its died
 lock = threading.Lock()
@@ -92,7 +92,7 @@ def readmsgs():
     thread process that wakes up and processes log entries
     handles the thread signalling part of the process
     """
-    global vw
+    global services
     global myips
     global lock
     global condition
@@ -156,7 +156,7 @@ def readmsgs():
             try:
                 conn = connect(conn)
                 for ip, whohas in localips.iteritems():
-                    count = upd.processlog(whohas, 0, conn, vw)
+                    count = upd.processlog(whohas, 0, conn, services)
                     if count != None:
                         logcount += count
             except Exception as e:

@@ -41,7 +41,7 @@ import threading
 # latestlock = threading.Lock()
 # statslock = threading.Lock()
 
-def processlog(ipd,lastlogid,conn,vw=True):
+def processlog(ipd,lastlogid,conn,services=None):
     """ 
     read log entries for a specific ip and do stats 
     this should be considered a critical section
@@ -162,7 +162,7 @@ def processlog(ipd,lastlogid,conn,vw=True):
                 stats['hourdiffs'],
                 stats['hours'],
                 scur, conn,
-                stats,vw)
+                stats,services)
 
         # delete what we have seen
         # note that more entries may have been added

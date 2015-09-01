@@ -7,10 +7,16 @@
 # botlogger.py uses botlog.py and is able to keep up with more traffic
 import sys
 import json
-import psycopg2
 import re
 import os
 import socket
+import traceback
+import logging
+
+import redis
+rs = None
+
+import psycopg2
 from mldb import dbname, dbuser, dbpw
 autocommit = True
 
@@ -104,15 +110,10 @@ MAXDIFFS = 1000
 # ignore anything over 2 days old - too extreme?
 OLD = 2 * 86400 * 1000
 
-def get_prediction(data,stats,vw):
+def vw_string(data, stats):
     """
-    build a vw compatible string and get prediction 
-    from vw server if it exists
-    what the string looks like
-    | mean:0.666667 var:0.666667 skew:-0.19245 kurtosis:0 hmean:0 hvar:0 hskew:0 hkurtosis:0 htmean:0.125 htvar:8.625 htskew:0.187114 htkurtosis:-2.291937 poverr:0 uacount:1 errprop:0
+    make a string for vowpal wabbit -  minus the label
     """
-    if vw == None: 
-        return None
     if stats is None or stats['reqs'] == 0: 
         data['poverr'] = 1
         data['uacount'] = 1
@@ -123,24 +124,113 @@ def get_prediction(data,stats,vw):
         data['errprop'] = 0.0+stats['errs']/stats['reqs']
 
     features = "| mean:%(mean)s var:%(var)s skew:%(skew)s kurtosis:%(kurtosis)s hmean:%(hmean)s hvar:%(hvar)s hskew:%(hskew)s hkurtosis:%(hkurtosis)s htmean:%(htmean)s htvar:%(htvar)s htskew:%(htskew)s htkurtosis:%(htkurtosis)s poverr:%(poverr)s uacount:%(uacount)s errprop:%(errprop)s\n" % data
+    return features
+
+def get_label(ua, services):
+    """
+    use a service tied to useragentstring.com 
+    to figure out a class for our user agent
+    this is used for training new models
+    """
+    if 'ua' not in services or services['ua'] == None: 
+        return None
+    uasvc = services['ua']
+
+    label = None
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect(uasvc)
+        s.sendall(ua)
+        s.shutdown(socket.SHUT_WR)
+        rawlabel = s.recv(1024)
+        s.close()
+        try:
+            label = int(rawlabel.strip())
+            logging.debug("got label %d for ua %s" % (label, ua))
+        except:
+            logging.debug("got label None for ua %s" % (ua))
+    except:
+        pass
+    return label
+
+def teach(label, features, services):
+    """
+    send data to vowpal wabbit online learning process
+    needs the label from get_label 
+    """
+    global uas
+    if 'vw_learn' not in services or services['vw_learn'] == None: 
+        return None
+
+    vw = services['vw_learn']
+
+    if label == 0:
+        features = "-1 "+features
+    elif label == 1:
+        features = "1 "+features
+    else:
+        return
+
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect(vw)
+        s.sendall(features)
+        s.shutdown(socket.SHUT_WR)
+        s.close()
+        logging.debug("vw sent features %s" % (features))
+    except:
+        pass
+
+def get_prediction(data,stats,services):
+    """
+    build a vw compatible string and get prediction 
+    from vw server if it exists
+    """
+    global rs
+    if 'vw' not in services or services['vw'] == None:
+        return None, None
+    vw = services['vw']
+    features = vw_string(data, stats)
+
+    if stats['class'] == None and 'uas' in stats and len(stats['uas']) > 0:
+        stats['class'] = get_label(stats['uas'][0], services)
+
+    # teach(stats['class'], features, services)
+
     pred = None
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # vw should be a (host,port) tuple
+        # "vw" should be a (host,port) tuple
         s.connect(vw)
         s.sendall(features)
         s.shutdown(socket.SHUT_WR)
         rawpred = s.recv(1024)
         s.close()
+        rawpred = rawpred.strip()
         pred = float(rawpred)
         logging.debug("got prediction %f for %s" % (pred, features))
-    except:
-        pass
-    return pred
+
+        if rs == None and 'redis' in services and services['redis'] != None:
+            rs = redis.Redis(services['redis'])
+            
+        if rs != None:
+            print "saving prediction to",data['ip']
+            if pred < 0.0:
+                rs.set(data['ip'],-1)
+            else:
+                rs.set(data['ip'], 1)
+
+    except Exception as e:
+        a, b, tb = sys.exc_info()
+        traceback.print_tb(tb)
+        print e
+    return pred, stats['class']
 
 
-def updatestats(ip,diffs,hourdiffs,hours,ucur,uconn,stats=None,vw=None):
-    """updates botstats fields"""
+def updatestats(ip,diffs,hourdiffs,hours,ucur,uconn,stats=None,services=None):
+    """
+    updates botstats fields
+    """
     try:
         ucur.execute(
             """
@@ -172,7 +262,7 @@ def updatestats(ip,diffs,hourdiffs,hours,ucur,uconn,stats=None,vw=None):
                     'htvar':ht['var'], 'htskew':ht['skew'], 'htkurtosis':ht['kurtosis']
                     }
             try:
-                data['pred'] = get_prediction(data,stats,vw)
+                data['pred'], data['class'] = get_prediction(data,stats,services)
                 ucur.execute(
                     """
                     update botstats set 
@@ -182,7 +272,7 @@ def updatestats(ip,diffs,hourdiffs,hours,ucur,uconn,stats=None,vw=None):
                         hskew=%(hskew)s, hkurtosis=%(hkurtosis)s, 
                         htn=%(htn)s, htsum=%(htsum)s, htmean=%(htmean)s, htvar=%(htvar)s, 
                         htskew=%(htskew)s, htkurtosis=%(htkurtosis)s,
-                        prediction=%(pred)s
+                        prediction=%(pred)s, class=%(class)s
                     where ip=%(ip)s
                     """, data)
                 if autocommit: uconn.commit()
