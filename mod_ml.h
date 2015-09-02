@@ -102,6 +102,16 @@ typedef enum {
     ML_LENGTH_YES
 } ml_send_length;
 
+/* for numerical comparisons of classes */
+typedef enum {
+    ML_NOOP = 0,
+    ML_OPEQ = 1,
+    ML_OPLT = 2,
+    ML_OPLTE = 3,
+    ML_OPGT = 4,
+    ML_OPGTE = 5,
+} ml_op;
+
 /* when is the proc being run? */
 typedef enum {
     ML_NOTRUN = 0,

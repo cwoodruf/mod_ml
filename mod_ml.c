@@ -2298,6 +2298,72 @@ static int _ml_apply_one_cr(request_rec *r, ml_directives_t *c, ml_cr_t *cr)
     return OK;
 }
 
+/*
+ * if we got a numeric value from the classifier
+ * and we couldn't match it exactly
+ * try matching using <,>,<=,>=,=
+ */
+static apr_array_header_t *_ml_search_prediction(
+        request_rec *r, 
+        apr_hash_t *cr,
+        double prediction
+) {
+    apr_hash_index_t *hi;
+    double test = 0.0;
+    ml_op op = ML_NOOP;
+    int offs = 0;
+
+    for (hi = apr_hash_first(NULL, cr); hi; hi = apr_hash_next(hi)) {
+        const char *class;
+        apr_array_header_t *v;
+        apr_hash_this(hi, (const void**)&class, NULL, (void **)&v);
+
+        switch (*class) {
+            case '=':
+                op = ML_OPEQ;
+                break;
+            case '<':
+                op = ML_OPLT;
+                break;
+            case '>':
+                op = ML_OPGT;
+                break;
+            default: op = ML_NOOP;
+        }
+        if (op == ML_NOOP) continue;
+
+        if (*(class+1) == '=') {
+            offs = 2;
+            op++;
+        } else {
+            offs = 1;
+        }
+
+        errno = 0;
+        test = strtod(class+offs, (char **)NULL);
+        if (errno != 0) continue;
+
+        switch (op) {
+            case ML_OPEQ:
+                if (prediction == test) return v;
+                break;
+            case ML_OPGT:
+                if (prediction > test) return v;
+                break;
+            case ML_OPGTE:
+                if (prediction >= test) return v;
+                break;
+            case ML_OPLT:
+                if (prediction < test) return v;
+                break;
+            case ML_OPLTE:
+                if (prediction <= test) return v;
+                break;
+        }
+    }
+    return NULL;
+}
+
 /* 
  * apply class responses to a class 
  */
@@ -2316,6 +2382,13 @@ static int _ml_apply_crs(
     if (cr == NULL) return OK;
 
     apr_array_header_t *crarray = apr_hash_get(cr, class, ML_AHKS);
+    if (crarray == NULL) {
+        errno = 0;
+        double prediction = strtod(class, (char **)NULL);
+        if (errno == 0) {
+            crarray = _ml_search_prediction(r, cr, prediction);
+        }
+    }
     if (crarray == NULL) return OK;
 
     ml_cr_t *crs = (ml_cr_t *)crarray->elts;

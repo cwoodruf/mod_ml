@@ -1,0 +1,9 @@
+<IfModule ml_module>
+    MLEnabled on
+    MLClassResponse "<0" "env" "sign=negative"
+    MLClassResponse ">=0" "env" "sign=positive"
+    MLClassResponse "=0" "env" "zero=true"
+    MLClassifier proc /usr/local/bin/randnum.pl
+    SetHandler ml
+</IfModule>
+
