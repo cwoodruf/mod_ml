@@ -2,5 +2,5 @@
     MLEnabled on
     MLClassResponse "YES" http 302
     MLClassResponse "NO" http 404
-    MLClassifier proc /srv/cal/src/apache/ml/testers/randyn.pl
+    MLClassifier proc /usr/local/bin/randyn.pl
 </IfModule>

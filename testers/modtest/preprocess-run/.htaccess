@@ -4,7 +4,7 @@
 <IfModule ml_module>
     MLEnabled on
 
-    MLLabels header User-Agent
+    MLFeatures header User-Agent
     MLFeatures time ctime
     MLFeatures env REQUEST_URI HTTP_HOST
     MLFeatures request status_line
@@ -15,5 +15,5 @@
     MLOutFormat jsonfields
 
     # this is started with /srv/cal/src/apache/ml/testers/startsock.sh
-    MLPreProcess ip cloudsmall8.cs.surrey.sfu.ca:37777
+    MLPreProcess ip 127.0.0.1:37777
 </IfModule>

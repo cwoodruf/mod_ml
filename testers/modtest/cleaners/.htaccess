@@ -1,7 +1,7 @@
 <IfModule ml_module>
     MLEnabled on
     MLDefFieldProc proc /usr/local/bin/caps.pl
-    MLFieldProc ip cloudsmall8.cs.surrey.sfu.ca:39993 time epoch
+    MLFieldProc ip 127.0.0.1:39993 time epoch
     MLFieldProc regex "s/^0*(\d)/$1/" time hour=%H
 
     MLFeatures header User-Agent

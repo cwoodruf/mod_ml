@@ -7,3 +7,26 @@ connection from 206.12.16.211:53977
 received data: {"User-Agent":"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:39.0) Gecko/20100101 Firefox/39.0","ctime":"Sun Aug 09 17:31:13 2015","REQUEST_URI":"/modtest/preprocess-run/","HTTP_HOST":"cloudsmall8.cs.surrey.sfu.ca:8898","status_line":"200 OK","content_type":"text/html","status_line":"200 OK","nonce":"nonce=3bc541dd0b29bc79d857b06fcf2eb53211219bdd:bd66cc8d48f8e98f826a20e8229ece855be87f13"}
 
 
+server waiting for client connection on port 49994
+connection from 127.0.0.1:38875
+received data: {"User-Agent":"Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:40.0) Gecko/20100101 Firefox/40.0","ctime":"Wed Aug 26 17:48:33 2015","REQUEST_URI":"/modtest/preprocess-run","HTTP_HOST":"localhost:8898","status_line":"301 Moved Permanently","content_type":"text/html; charset=iso-8859-1","status_line":"301 Moved Permanently","nonce":"nonce=e06c7387ca46a6aecd39566e102632c198680d14:fafc06241b33bc670e8be1450be94c736f5ed05f"}
+
+
+connection from 127.0.0.1:38876
+received data: {"User-Agent":"Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:40.0) Gecko/20100101 Firefox/40.0","ctime":"Wed Aug 26 17:48:34 2015","REQUEST_URI":"/modtest/preprocess-run/","HTTP_HOST":"localhost:8898","status_line":"200 OK","content_type":"text/html","status_line":"200 OK","nonce":"nonce=28974c95952497ac49211e9eb8800a1bc4447e3d:c80f1805bdbbb76a4cd384c9c9ce6410e28d70e2"}
+
+
+connection from 127.0.0.1:38903
+received data: {"User-Agent":"Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:40.0) Gecko/20100101 Firefox/40.0","ctime":"Wed Aug 26 18:08:19 2015","REQUEST_URI":"/modtest/preprocess-run/","HTTP_HOST":"localhost:8898","status_line":"304 Not Modified","content_type":"text/html","status_line":"304 Not Modified","nonce":"nonce=b895f296d7b823c6c20c86ef4b2a0e483ab11973:7d396ea370618dd2a1c870523c120ceecfdb0480"}
+
+
+connection from 127.0.0.1:38924
+received data: {"User-Agent":"Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:40.0) Gecko/20100101 Firefox/40.0","ctime":"Wed Aug 26 18:21:38 2015","REQUEST_URI":"/modtest/preprocess-run/","HTTP_HOST":"localhost:8898","status_line":"304 Not Modified","content_type":"text/html","status_line":"304 Not Modified","nonce":"nonce=1c2e9033d8d1a189fba4160317309542345383fc:83597659464bb38caea2e46a159de14853a8c503"}
+
+
+cannot create socket Address already in use
+cannot create socket Address already in use
+cannot create socket Address already in use
+cannot create socket Address already in use
+cannot create socket Address already in use
+server waiting for client connection on port 49994

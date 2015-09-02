@@ -2,7 +2,7 @@
     MLEnabled on
     MLOutFormat raw
 
-    MLLabels literal "LABEL!"
+    MLFeatures literal "LABEL!"
     MLFeatures literal "headers"
     MLFeatures header User-Agent
     MLFeatures header Content-Type 
@@ -62,12 +62,14 @@
     MLFeatures auth secret2=blergh2
     MLFeatures auth secret3=blergh3
 
+    MLSendLength on
     MLClassifier proc /usr/local/bin/echo.pl
     MLOutFormat quoted
     MLClassifier proc /usr/local/bin/echo.pl
     MLOutFormat csv
     MLClassifier proc /usr/local/bin/echo.pl
     MLOutFormat jsonarray
+    MLSendLength off
     MLOutProc proc /usr/local/bin/caps.pl
     MLClassifier proc /usr/local/bin/echo.pl
     MLOutFormat jsonfields

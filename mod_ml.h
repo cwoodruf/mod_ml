@@ -96,6 +96,12 @@ typedef enum {
     ML_ENABLED
 } ml_enabled;
 
+/* prepend length of feature string? */
+typedef enum {
+    ML_LENGTH_NO = 0,
+    ML_LENGTH_YES
+} ml_send_length;
+
 /* when is the proc being run? */
 typedef enum {
     ML_NOTRUN = 0,
@@ -219,6 +225,16 @@ typedef enum {
     ML_OUT_NONE
 } ml_outformat;
 
+static char *ml_outformat_ary[] =  {
+    "RAW",
+    "QUOTED",
+    "JSON",
+    "JSONFLDS",
+    "JSONARY",
+    "CSV",
+    "NONE"
+};
+
 /* features|vars to send to preprocessor or classifier */
 typedef struct ml_feature {
     ml_fieldtype fieldtype;
@@ -255,16 +271,21 @@ typedef struct ml_sock {
     char *path;
 } ml_sock_t;
 
+typedef struct ml_directives ml_directives_t;
+
 /* store processor information */
 typedef struct ml_proc {
+    ml_directives_t *conf;        /* our parent configuration directives */
     ml_role role;                 /* clean, preprocess, classify, class response */
     ml_proctype proctype;         /* where are we sending data? */
     char *proc;                   /* name of helper process|ip|socket|regex */
     void *helper;                 /* what this is depends on proctype */
+    char *lastsent;               /* last feature string sent */
     /* specific features for processors, classifiers and class responses */
     ml_outformat outformat;       /* how to make output strings */
+    ml_send_length send_length;   /* prepend feature string with length of string */
     apr_array_header_t *features; /* features associated with this proc */
-    apr_array_header_t *vars;   /* vars associated with this proc */
+    apr_array_header_t *vars;     /* vars associated with this proc */
     apr_hash_t *classresponse;    /* actions associated with class responses */
     struct ml_proc *def_fp;       /* how to clean fields w/o a specific cleaner */
     struct ml_proc *out_fp;       /* how to clean output */
@@ -293,7 +314,7 @@ typedef struct ml_cr {
 } ml_cr_t;
 
 /* our directives */
-typedef struct {
+typedef struct ml_directives {
     ml_enabled enabled; 
     unsigned int save_features;         /* flag to indicate feature list started */
     unsigned int reset_features;        /* flag creation of new feature list */
@@ -307,6 +328,7 @@ typedef struct {
     apr_table_t *cgi;                   /* place to hold cgi data if needed */
     apr_array_header_t *vars;           /* vars for internal use - e.g modifying ip procs  */
     ml_outformat outformat;             /* how to make feature strings */
+    ml_send_length send_length;         /* prepend feature string with length of string */
     apr_array_header_t *preprocessor;   /* how to preprocess input - doesn't send a response */
     apr_array_header_t *classifier;     /* how to classify input - sends a response */
     apr_hash_t *classresponse;          /* what to change or add based on classification */

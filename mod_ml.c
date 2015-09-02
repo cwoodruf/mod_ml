@@ -221,6 +221,10 @@ static char * _ml_conf_str(
     char *conf = apr_psprintf(p, "\nML config\n");
     conf = apr_pstrcat(p, conf, 
             apr_psprintf(p, "enabled? %d\n", sc->enabled), NULL);
+    conf = apr_pstrcat(p, conf, 
+            apr_psprintf(p, "output format: %d %s\n", sc->outformat, ml_outformat_ary[sc->outformat]), NULL);
+    conf = apr_pstrcat(p, conf, 
+            apr_psprintf(p, "prepend length to output? %d\n", sc->send_length), NULL);
 
     if (sc->preprocessor != NULL) {
         conf = _ml_proc_str("preprocessors", sc, sc->preprocessor, &conf, p);
@@ -316,6 +320,20 @@ static const char *ml_set_enabled(cmd_parms *cmd, void *conf, const char *arg)
     if(!strcasecmp(arg, "on")) config->enabled = ML_ENABLED;
     else config->enabled = ML_DISABLED;
     _ml_log("enabled %d", config->enabled);
+    return NULL;
+}
+
+/*
+ * set whether we are going to prepend length to feature string
+ * this is done right before the feature string is sent off
+ * so it will include any extra information in the string
+ */
+static const char *ml_set_send_length(cmd_parms *cmd, void *conf, const char *arg)
+{
+    ml_directives_t *config = conf;
+    if(!strcasecmp(arg, "on")) config->send_length = ML_LENGTH_YES;
+    else config->send_length = ML_LENGTH_NO;
+    _ml_log("send_length %d", config->send_length);
     return NULL;
 }
 
@@ -561,9 +579,11 @@ static ml_proc_t *_ml_proc_setup(request_rec *r, ml_proc_t *pr)
 {
     apr_pool_t *p = r->pool;
     ml_proc_t *prcp = apr_pcalloc(p, sizeof(ml_proc_t));
+    prcp->conf = pr->conf;
     prcp->role = pr->role;  
     prcp->proctype = pr->proctype;
     prcp->outformat = pr->outformat; 
+    prcp->send_length = pr->send_length; 
     prcp->features = pr->features;
     prcp->vars = pr->vars; 
     prcp->classresponse = pr->classresponse; 
@@ -667,6 +687,7 @@ static int _ml_set_field(
     proc = apr_hash_get(c->cleaners, pkey, ML_AHKS);
     if (proc == NULL) {
         proc = (ml_proc_t *)apr_pcalloc(cmd->pool, sizeof(ml_proc_t));
+        proc->conf = c;
         proc->role = ML_CLEANER;
         proc->proctype = *pt;
         proc->proc = apr_pstrdup(cmd->pool, p);
@@ -704,6 +725,7 @@ static const char *ml_set_def_field_proc(
     }
     _ml_log("setting default proctype %s (%d)", proctype, *pt);
     c->def_fp = apr_pcalloc(cmd->pool, sizeof(ml_proc_t));
+    c->def_fp->conf = c;
     c->def_fp->proctype = *pt;
     c->def_fp->role = ML_CLEANER;
     c->def_fp->proc = apr_pstrdup(cmd->pool, proc);
@@ -728,6 +750,7 @@ static const char *ml_set_out_proc(
     }
     _ml_log("setting default proctype %s (%d)", proctype, *pt);
     c->out_fp = apr_pcalloc(cmd->pool, sizeof(ml_proc_t));
+    c->out_fp->conf = c;
     c->out_fp->proctype = *pt;
     c->out_fp->role = ML_CLEANER;
     c->out_fp->proc = apr_pstrdup(cmd->pool, proc);
@@ -801,6 +824,7 @@ static const char *_ml_set_proc(
     p->features = c->features;
     p->vars = c->vars;
     p->outformat = c->outformat;
+    p->send_length = c->send_length;
     p->out_fp = c->out_fp;
     p->def_fp = c->def_fp;
     c->reset_features = TRUE;
@@ -980,12 +1004,14 @@ static const char *ml_set_class_response(
                 /* the arguments help us decide what to send */
                 cr->args = _ml_split_at(' ', action, &cr->action, p);
                 cr->proc = (ml_proc_t *)apr_pcalloc(p, sizeof(ml_proc_t));
+                cr->proc->conf = c;
                 cr->proc->role = ML_CLASSRESPONSE;
                 /* proctype and crtype can both be used for the proctype */
                 cr->proc->proctype = cr->crtype; 
                 cr->proc->proc = apr_pstrdup(p, cr->action);
                 _ml_proc_set_helper(p, cr->proc); 
                 cr->proc->outformat = c->outformat;
+                cr->proc->send_length = c->send_length;
                 cr->proc->features = c->features;
                 cr->proc->vars = c->vars;
                 c->reset_features = TRUE;
@@ -1011,43 +1037,63 @@ static const char *ml_set_class_response(
 static const command_rec ml_directives[] =
 {
     AP_INIT_TAKE1("MLEnabled", ml_set_enabled, NULL, OR_ALL,
-					"Enable or disable mod_ml"),
+                    "Enable ('on') or disable ('off') mod_ml\n"),
+    AP_INIT_TAKE1("MLSendLength", ml_set_send_length, NULL, OR_ALL,
+                    "If set to 'on' preprend the length of the feature string \n"
+                    "\tto feature string\n"),
     AP_INIT_TAKE1("MLOutFormat", ml_set_outformat, NULL, OR_ALL,
-					"How to format feature string: "
-                    "csv, json, jsonarray, jsonfields, raw, quoted"),
+                    "How to format feature string: \n"
+                    "\tcsv, json, jsonarray, jsonfields, raw, quoted\n"),
     AP_INIT_TAKE2("MLDefFieldProc", ml_set_def_field_proc, NULL, OR_ALL,
-					"Default processor for cleaning field data. "
-                    "regexes must use m// with () captures or s/// to work. "
-                    "Arguments: {sock|ip|proc|regex} {string}"),
+                    "Default processor for cleaning field data. \n"
+                    "\tArguments: \n"
+                    "\t{sock|ip|proc|regex} {string}\n"
+                    "\twhere\n"
+                    "\tsock is a unix socket path\n"
+                    "\tip is an IP based service in the form <ip address>:<port>\n"
+                    "\tproc is a path to a process that receives field data via STDIN\n"
+                    "\tregex is a Perl compatible regular expression\n"
+                    "\tregexes must use m// with () captures or s/// to work. \n"),
     AP_INIT_RAW_ARGS("MLFieldProc", ml_set_field_proc, NULL, OR_ALL,
-					"Field/processor map. "
-                    "Arguments: {regex|proc|ip|sock} {processor} "
-                    "{cgi|uri|header|env|cookie} {field1 field2 ...}"),
+                    "Field/processor map. \n"
+                    "\tArguments: {regex|proc|ip|sock} {processor} "
+                    "\t{cgi|uri|header|env|cookie|time|literal|request|auth} "
+                    "{field1 field2 ...}\n"),
     AP_INIT_TAKE2("MLPreProcess", ml_set_preprocessor, NULL, OR_ALL,
-					"Process that creates model or does basic data intake. "
-                    "Arguments: {sock|ip|proc} {string}"),
+                    "Process that creates model or does basic data intake. \n"
+                    "\tArguments: {sock|ip|proc} {string}\n"),
     AP_INIT_TAKE2("MLClassifier", ml_set_classifier, NULL, OR_ALL,
-					"Process that makes decisions based on field input. "
-                    "Arguments: {sock|ip|proc} {string}"),
+                    "Process that makes decisions based on field input. \n"
+                    "\tArguments: {sock|ip|proc} {string}\n"),
     AP_INIT_ITERATE2("MLFeatures", ml_set_features, NULL, OR_ALL,
-					"Field names of features in order. "
-                    "Arguments: "
-                    "{cgi|uri|header|env|cookie|time|literal|request|auth} "
-                    "{field1, field2 ...}"),
+                    "Field names of features in order. \n"
+                    "\tArguments: \n"
+                    "\t{cgi|uri|header|env|cookie|time|literal|request|auth} "
+                    "\t{[name1=]field1, [name2=]field2 ...}\n"
+                    "\twhere\n"
+                    "\tcgi is one or more GET or POST cgi parameters\n"
+                    "\turi is one or more URI part from parsed_uri section of record_rec\n"
+                    "\theader is one or more request header variables\n"
+                    "\tenv is one or more CGI and apache environment variables\n"
+                    "\tcookie is one or more cookie from header\n"
+                    "\ttime can be micros,millis,epoch,now,elapsed,rfc822,ctime,%%time formats\n"
+                    "\tliteral is one or more literal string is copied into outstring\n"
+                    "\trequest is one or more string variable from apache apr request_rec\n"
+                    "\tauth adds one or more passwords in the form of sha1(sha1(pw)rand):rand\n"),
     AP_INIT_ITERATE2("MLVars", ml_set_vars, NULL, OR_ALL,
-					"Variables (not sent to preprocessors or classifiers) "
-                    "Arguments: "
-                    "{cgi|uri|header|env|cookie|time|literal|request|auth} "
-                    "{field1, field2 ...}"),
+                    "Variables (not sent to preprocessors or classifiers) \n"
+                    "\tArguments: \n"
+                    "\t{cgi|uri|header|env|cookie|time|literal|request|auth} "
+                    "{field1, field2 ...}\n"),
     AP_INIT_RAW_ARGS("MLClassResponse", ml_set_class_response, NULL, OR_ALL,
-                    "What to do based on classification (applied in order). "
-                    "Arguments: "
-                    "{class} {cgi|uri|header|cookie|env|http|ip|proc|sock} "
-                    "{action}"),
+                    "What to do based on classification (applied in order). \n"
+                    "\tArguments: \n"
+                    "\t{class} {cgi|uri|header|cookie|env|http|ip|proc|sock} "
+                    "{action}\n"),
     AP_INIT_TAKE2("MLOutProc", ml_set_out_proc, NULL, OR_ALL,
-					"Processor for cleaning a full feature string. "
-                    "regexes must use m// with () captures or s/// to work. "
-                    "Arguments: {sock|ip|proc|regex} {string}"),
+                    "Processor for cleaning a full feature string. \n"
+                    "\tregexes must use m// with () captures or s/// to work. \n"
+                    "\tArguments: {sock|ip|proc|regex} {string}\n"),
     
     { NULL }
 };
@@ -1071,6 +1117,7 @@ static void* ml_create_dir_conf(apr_pool_t *pool, char *x)
     ml->cleaners = apr_hash_make(pool);
     ml->features = apr_array_make(pool, 1, sizeof(ml_feature_t));
     ml->outformat = ML_OUT_NONE;
+    ml->send_length = ML_LENGTH_NO;
     ml->cgi = NULL; /* only create this if needed */
     ml->vars = apr_array_make(pool, 1, sizeof(ml_feature_t)); 
     ml->preprocessor = apr_array_make(pool, 1, sizeof(ml_proc_t)); 
@@ -1689,15 +1736,54 @@ static char *_ml_apply_regex(request_rec *r, char *raw, ml_regex_t *helper)
     return raw;
 }
 
+/*
+ * take feature string and preprend length to it
+ */
+static char *_ml_add_length(
+        request_rec *r,
+        ml_proc_t *p,
+        char *features
+) {
+    if (p->send_length == ML_LENGTH_NO) return features;
+    char *length = apr_ltoa(r->pool, strlen(features));
+    return apr_pstrcat(r->pool, length, " ", features, NULL);
+}
+
 /* 
  * use a helper to transform some raw data 
  */
-static char *_ml_apply_helper(request_rec *r, ml_proc_t *fp, char *raw)
-{
+static char *_ml_apply_helper(
+        request_rec *r, 
+        ml_proc_t *fp, 
+        char *raw
+) {
     if (fp == NULL) return raw;
     if (raw == NULL) return raw;
     if (fp->helper == NULL && fp->proctype != ML_IP) return raw;
 
+    /* 
+     * prepend the length if we are sending data 
+     * to preprocessor/classifier and have requested that 
+     */
+    switch (fp->role) {
+        case ML_CLASSIFIER:
+        case ML_PREPROCESSOR:
+            {
+            switch (fp->proctype) {
+                case ML_PROC: 
+                case ML_IP:
+                case ML_SOCK:
+                    raw = _ml_add_length(r, fp, raw);
+                    break;
+                default: break;
+            }
+            _ml_clog(r->server,"at %d feature string for %s %s:",__LINE__, ml_role_names[fp->role], fp->proc);
+            _ml_clog(r->server,"%s", raw);
+            }
+            break;
+        default: break;
+    }
+    fp->lastsent = raw;
     switch (fp->proctype) {
         case ML_REGEX: 
             { 
@@ -1946,12 +2032,7 @@ static char *_ml_feature_string(
             break;
         default: break;
     }
-    _ml_clog(r->server,"at %d feature string for %s %s: %s", 
-            __LINE__, ml_role_names[p->role], p->proc, featstr);
     featstr = _ml_apply_helper(r, p->out_fp, featstr);
-    if (c->is_handler) 
-        ap_rprintf(r, "feature string for %s %s:\n%s\n", 
-            ml_role_names[p->role], p->proc, featstr);
     return featstr;
 }
 
@@ -2013,12 +2094,10 @@ static char *_ml_ins_args(
 
         switch (*arg) {
             case 'F':
-            case 'f':
                 arg++;
                 ins = features;
                 break;
             case 'C':
-            case 'c':
                 arg++;
                 ins = class;
                 break;
@@ -2203,11 +2282,12 @@ static int _ml_apply_one_cr(request_rec *r, ml_directives_t *c, ml_cr_t *cr)
             {
                 char *featurestr = _ml_feature_string(r, c, cr->proc);
                 char *args = _ml_ins_args(r->pool, cr->args, featurestr, cr->class);
-
-                _ml_clog(r->server, "interpolated args:\n%s\n", args);
-                if (c->is_handler) ap_rprintf(r, "interpolated args:\n%s\n", args);
-
                 char *response = _ml_apply_helper(r, cr->proc, args);
+
+                if (c->is_handler) {
+                    ap_rprintf(r, "cr proc %s was sent:\n%s\nand got response %s", 
+                            cr->proc->proc, cr->proc->lastsent, response);
+                }
             }
             break;
         case ML_CLASS_REDIRECT:
@@ -2269,8 +2349,10 @@ static int _ml_preprocess(request_rec *r, ml_directives_t *c)
 /* 
  * classification - where we keep the response 
  */
-static int _ml_classify(request_rec *r, ml_directives_t *c)
-{
+static int _ml_classify(
+        request_rec *r, 
+        ml_directives_t *c
+) {
     int i, rc;
     char *class;
     if (c->enabled != ML_ENABLED) return OK;
@@ -2278,12 +2360,16 @@ static int _ml_classify(request_rec *r, ml_directives_t *c)
     /* if there are conflicting responses this keeps the last one */
     ml_proc_t *procs = (ml_proc_t *)c->classifier->elts;
     for (i = 0; i<c->classifier->nelts; i++) {
-        _ml_clog(r->server, "================================================ start classifier %d: %s", i, procs[i].proc);
+        _ml_clog(r->server, "===================================== start classifier %d: %s", i, procs[i].proc);
         char *features = _ml_feature_string(r, c, &procs[i]);
         class = _ml_apply_helper(r, &procs[i], features);
+        if (c->is_handler) {
+            ap_rprintf(r, "classifier %s was sent:\n%s\nand got response %s\n",
+                    procs[i].proc, procs[i].lastsent, class);
+        }
         /* then finally apply the class responses to the classifier output */
         rc = _ml_apply_crs(r, c, &procs[i], class);
-        _ml_clog(r->server, "================================================ finish classifier %d: %s", i, class);
+        _ml_clog(r->server, "============================================ finish classifier %d: %s", i, class);
     }
     return rc;
 }
@@ -2330,7 +2416,7 @@ static ml_directives_t *_ml_setup_conf(request_rec *r)
 static int ml_classifier_hook(request_rec *r) 
 {
     ml_directives_t *dc = _ml_setup_conf(r);
-    _ml_clog(r->server, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ start ml_classifier");
+    _ml_clog(r->server, "~~~~~~~~~~~~~~~~~~~~~~~~~ start ml_classifier");
 
     if (dc == NULL || !dc->enabled) return DECLINED;
     dc->is_handler = FALSE;
@@ -2354,7 +2440,7 @@ static int ml_handler(request_rec *r)
     if (!_ml_handling(r)) return DECLINED;
 
     r->content_type = "text/plain";      
-    _ml_clog(r->server, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ start ml_handler");
+    _ml_clog(r->server, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ start ml_handler");
 
     dc->is_handler = TRUE;
     int http_status = _ml_classify(r, dc);
