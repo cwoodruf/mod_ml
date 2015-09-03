@@ -222,7 +222,8 @@ static char * _ml_conf_str(
     conf = apr_pstrcat(p, conf, 
             apr_psprintf(p, "enabled? %d\n", sc->enabled), NULL);
     conf = apr_pstrcat(p, conf, 
-            apr_psprintf(p, "output format: %d %s\n", sc->outformat, ml_outformat_ary[sc->outformat]), NULL);
+            apr_psprintf(p, "output format: %d %s\n", sc->outformat, 
+                ml_outformat_ary[sc->outformat]), NULL);
     conf = apr_pstrcat(p, conf, 
             apr_psprintf(p, "prepend length to output? %d\n", sc->send_length), NULL);
 
@@ -364,6 +365,9 @@ static const char *ml_set_outformat(
 
     else if(!strcasecmp(arg, "csv")) 
         config->outformat = ML_OUT_CSV;
+
+    else if(!strcasecmp(arg, "libsvm")) 
+        config->outformat = ML_OUT_SVM;
 
     return NULL;
 }  
@@ -907,6 +911,72 @@ static void _ml_restart_lists(
     }
 }
 
+/*
+ * parse a string of features
+ * as if they were a series of MLFeatures directives
+ * features use a mod_rewrite-like format
+ * %{fieldtype:field}
+ */
+static const char *ml_parse_string(
+        cmd_parms *cmd, 
+        void *config, 
+        const char *arg
+) {
+    ml_directives_t *c = (ml_directives_t *)config;
+    c->outformat = ML_OUT_RAW;
+
+    apr_pool_t *p = cmd->pool;
+    char *fieldtype;
+    char *field;
+    char *last;
+    char *end;
+    char *remaining;
+    char *instr = apr_pstrdup(p, arg);
+    const char *rc = NULL;
+    
+    _ml_restart_lists(cmd, c, TRUE);
+
+    char *tok = apr_strtok(instr, "%", &last);
+    /* instr will now be 0 terminated whereever % was */
+    if (tok == NULL || tok != instr+1) {
+        if ((rc = _ml_add_feat(p, c, c->features, "literal", instr)) != NULL) {
+            return rc;
+        }
+    }
+    while (tok != NULL) {
+        fieldtype = strchr(tok,'{');
+        remaining = end = strchr(tok,'}');
+        if (fieldtype != NULL && end != NULL && fieldtype < end) {
+            fieldtype++;
+            *end = '\0';
+            remaining++;
+            end--;
+            if (end > fieldtype) {
+                field = strchr(fieldtype,':');
+                if (field != NULL) {
+                    *field = '\0';
+                    field++;
+                    if (field < end) {
+                        if ((rc = _ml_add_feat(p, c, c->features, 
+                                        fieldtype, field)) != NULL) {
+                            return rc;
+                        }
+                    }
+                }
+            }
+        }
+        tok = apr_strtok(NULL, "%", &last);
+        /* remaining will be zero terminated now where % was */
+        if (remaining != NULL && *remaining != '\0') {
+            if ((rc = _ml_add_feat(p, c, c->features, 
+                            "literal", remaining)) != NULL) {
+                return rc;
+            }
+        }
+    }
+    return NULL;
+}
+
 /* 
  * add to our list of features 
  */
@@ -1043,7 +1113,7 @@ static const command_rec ml_directives[] =
                     "\tto feature string\n"),
     AP_INIT_TAKE1("MLOutFormat", ml_set_outformat, NULL, OR_ALL,
                     "How to format feature string: \n"
-                    "\tcsv, json, jsonarray, jsonfields, raw, quoted\n"),
+                    "\tcsv, json, jsonarray, jsonfields, raw, quoted, libsvm\n"),
     AP_INIT_TAKE2("MLDefFieldProc", ml_set_def_field_proc, NULL, OR_ALL,
                     "Default processor for cleaning field data. \n"
                     "\tArguments: \n"
@@ -1069,7 +1139,7 @@ static const command_rec ml_directives[] =
                     "Field names of features in order. \n"
                     "\tArguments: \n"
                     "\t{cgi|uri|header|env|cookie|time|literal|request|auth} "
-                    "\t{[name1=]field1, [name2=]field2 ...}\n"
+                    "\t{[name1=]field1 [name2=]field2 ...}\n"
                     "\twhere\n"
                     "\tcgi is one or more GET or POST cgi parameters\n"
                     "\turi is one or more URI part from parsed_uri section of record_rec\n"
@@ -1084,7 +1154,12 @@ static const command_rec ml_directives[] =
                     "Variables (not sent to preprocessors or classifiers) \n"
                     "\tArguments: \n"
                     "\t{cgi|uri|header|env|cookie|time|literal|request|auth} "
-                    "{field1, field2 ...}\n"),
+                    "{field1 field2 ...}\n"),
+    AP_INIT_TAKE1("MLString", ml_parse_string, NULL, OR_ALL,
+                    "Combine all features into a single string.\n"
+                    "\tArgument:\n"
+                    "\t%%{fieldtype1:[name1=]field1}...%%{fieldtype2:[name2=]field2}...\n"
+                    "field values are interpolated into the string.\n"),
     AP_INIT_RAW_ARGS("MLClassResponse", ml_set_class_response, NULL, OR_ALL,
                     "What to do based on classification (applied in order). \n"
                     "\tArguments: \n"
@@ -1958,6 +2033,17 @@ static char *_ml_feature_cat(
                                 *fcount, fs[i].clean), NULL);
                 }
                 break;
+            case ML_OUT_SVM:
+                {
+                    if (*fcount == 1) {
+                        fstr = apr_pstrcat(p, fstr, apr_psprintf(p, 
+                                    "%s ", fs[i].clean), NULL);
+                    } else {
+                        fstr = apr_pstrcat(p, fstr, apr_psprintf(p, 
+                                    "%s:%s ", fs[i].name, fs[i].clean), NULL);
+                    }
+                }
+                break;
             case ML_OUT_JSONFLDS:
                 {
                     char *name = _ml_esc_quotes(p, fs[i].name);
@@ -1968,12 +2054,12 @@ static char *_ml_feature_cat(
             case ML_OUT_QUOTED:
                 {
                     fstr = apr_pstrcat(p, fstr, 
-                            apr_psprintf(p, "\"%s\" ", fs[i].clean),NULL);
+                            apr_psprintf(p, "\"%s\" ", fs[i].clean), NULL);
                 }
                 break;
             default:
                 {
-                    fstr = apr_pstrcat(p, fstr, " ", fs[i].clean,NULL);
+                    fstr = apr_pstrcat(p, fstr, fs[i].clean, NULL);
                 }
         }
         ++(*fcount);
@@ -2299,12 +2385,31 @@ static int _ml_apply_one_cr(request_rec *r, ml_directives_t *c, ml_cr_t *cr)
 }
 
 /*
+ * given an array of responses do that action
+ */
+static int _ml_do_crarray(
+        request_rec *r, 
+        ml_directives_t *c, 
+        apr_array_header_t *crarray
+) {
+    if (crarray == NULL) return OK;
+
+    ml_cr_t *crs = (ml_cr_t *)crarray->elts;
+    int rc = OK;
+    for (int i; i<crarray->nelts; i++) {
+        rc = _ml_apply_one_cr(r, c, &crs[i]);
+    }
+    return rc;
+}
+
+/*
  * if we got a numeric value from the classifier
  * and we couldn't match it exactly
  * try matching using <,>,<=,>=,=
  */
 static apr_array_header_t *_ml_search_prediction(
         request_rec *r, 
+        ml_directives_t *c, 
         apr_hash_t *cr,
         double prediction
 ) {
@@ -2328,6 +2433,9 @@ static apr_array_header_t *_ml_search_prediction(
             case '>':
                 op = ML_OPGT;
                 break;
+            case '!':
+                op = ML_OPNE;
+                break;
             default: op = ML_NOOP;
         }
         if (op == ML_NOOP) continue;
@@ -2345,19 +2453,23 @@ static apr_array_header_t *_ml_search_prediction(
 
         switch (op) {
             case ML_OPEQ:
-                if (prediction == test) return v;
+                if (prediction == test) _ml_do_crarray(r, c, v);
+                break;
+            case ML_OPNE:
+            case ML_OPNEQ:
+                if (prediction != test) _ml_do_crarray(r, c, v);
                 break;
             case ML_OPGT:
-                if (prediction > test) return v;
+                if (prediction > test) _ml_do_crarray(r, c, v);
                 break;
             case ML_OPGTE:
-                if (prediction >= test) return v;
+                if (prediction >= test) _ml_do_crarray(r, c, v);
                 break;
             case ML_OPLT:
-                if (prediction < test) return v;
+                if (prediction < test) _ml_do_crarray(r, c, v);
                 break;
             case ML_OPLTE:
-                if (prediction <= test) return v;
+                if (prediction <= test) _ml_do_crarray(r, c, v);
                 break;
         }
     }
@@ -2386,17 +2498,12 @@ static int _ml_apply_crs(
         errno = 0;
         double prediction = strtod(class, (char **)NULL);
         if (errno == 0) {
-            crarray = _ml_search_prediction(r, cr, prediction);
+            _ml_search_prediction(r, c, cr, prediction);
         }
+    } else {
+        return _ml_do_crarray(r, c, crarray);
     }
-    if (crarray == NULL) return OK;
-
-    ml_cr_t *crs = (ml_cr_t *)crarray->elts;
-    int rc = OK;
-    for (int i; i<crarray->nelts; i++) {
-        rc = _ml_apply_one_cr(r, c, &crs[i]);
-    }
-    return rc;
+    return OK;
 }
 
 
@@ -2411,10 +2518,10 @@ static int _ml_preprocess(request_rec *r, ml_directives_t *c)
 
     ml_proc_t *procs = (ml_proc_t *)c->preprocessor->elts;
     for (i = 0; i<c->preprocessor->nelts; i++) {
-        _ml_clog(r->server, "0000000000000000000000000000000000000000000000000000 start preprocessor %d: %s\n", i, class);
+        _ml_clog(r->server, "00000000000000000000000000000 start preprocessor %d: %s\n", i, class);
         char *features = _ml_feature_string(r, c, &procs[i]);
         class = _ml_apply_helper(r, &procs[i], features);
-        _ml_clog(r->server, "0000000000000000000000000000000000000000000000000000 finish preprocessor %d: %s\n", i, class);
+        _ml_clog(r->server, "00000000000000000000000000000 finish preprocessor %d: %s\n", i, class);
     }
     return OK;
 }
@@ -2513,7 +2620,7 @@ static int ml_handler(request_rec *r)
     if (!_ml_handling(r)) return DECLINED;
 
     r->content_type = "text/plain";      
-    _ml_clog(r->server, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ start ml_handler");
+    _ml_clog(r->server, "~~~~~~~~~~~~~~~~~~~~~~~~~~~ start ml_handler");
 
     dc->is_handler = TRUE;
     int http_status = _ml_classify(r, dc);

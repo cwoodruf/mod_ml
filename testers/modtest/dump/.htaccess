@@ -1,7 +1,10 @@
 <IfModule ml_module>
     MLEnabled on
-    MLOutFormat raw
+    MLFieldProc proc /usr/local/bin/count.pl header ua
+    MLString "hello %{cgi:greeting} %{header:User-Agent} count %{header:ua=User-Agent}"
+    MLClassifier proc /usr/local/bin/count.pl
 
+    MLOutFormat raw
     MLFeatures literal "LABEL!"
     MLFeatures literal "headers"
     MLFeatures header User-Agent
@@ -63,18 +66,22 @@
     MLFeatures auth secret3=blergh3
 
     MLSendLength on
-    MLClassifier proc /usr/local/bin/echo.pl
+    MLClassifier proc /usr/local/bin/count.pl
     MLOutFormat quoted
-    MLClassifier proc /usr/local/bin/echo.pl
+    MLClassifier proc /usr/local/bin/count.pl
     MLOutFormat csv
-    MLClassifier proc /usr/local/bin/echo.pl
+    MLClassifier proc /usr/local/bin/count.pl
     MLOutFormat jsonarray
     MLSendLength off
     MLOutProc proc /usr/local/bin/caps.pl
-    MLClassifier proc /usr/local/bin/echo.pl
+    MLClassifier proc /usr/local/bin/count.pl
     MLOutFormat jsonfields
     MLOutProc regex 's/([A-Z]+)/$1$1/g'
-    MLClassifier proc /usr/local/bin/echo.pl
+    MLClassifier proc /usr/local/bin/count.pl
+    MLOutFormat libsvm
+    MLOutProc regex 'm/(.*)/'
+    MLDefFieldProc proc /usr/local/bin/count.pl
+    MLClassifier proc /usr/local/bin/count.pl
 
     SetHandler ml
 </IfModule>

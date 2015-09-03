@@ -110,6 +110,8 @@ typedef enum {
     ML_OPLTE = 3,
     ML_OPGT = 4,
     ML_OPGTE = 5,
+    ML_OPNE = 6,
+    ML_OPNEQ = 7
 } ml_op;
 
 /* when is the proc being run? */
@@ -232,6 +234,8 @@ typedef enum {
     ML_OUT_JSONFLDS,
     ML_OUT_JSONARY,
     ML_OUT_CSV,
+    ML_OUT_VW,
+    ML_OUT_SVM,
     ML_OUT_NONE
 } ml_outformat;
 
@@ -242,6 +246,8 @@ static char *ml_outformat_ary[] =  {
     "JSONFLDS",
     "JSONARY",
     "CSV",
+    "VW",
+    "SVM",
     "NONE"
 };
 
