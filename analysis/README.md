@@ -21,7 +21,7 @@ The core files used for the experiment were:
 * optionally redis-botclassify.py run on port 39999 on the same host that bottiming.py writes predictions to 
 
 What gets run where:
-* replay.pl gets runo on a separate host with a set of Apache access logs in combined format
+* replay.pl gets run on a separate host with a set of Apache access logs in combined format
 * apache is run on one or more hosts with the mod_ml module and configuration
 * botlogger.py etc is run on 8 hosts in a cluster with non-replicated postgresql instances (these should support > 513 connections)
 * epoch.pl, myhost.pl, botlabelonline.py and redis-botclassify.py are run on a separate host from botlogger, apache and replay.pl
