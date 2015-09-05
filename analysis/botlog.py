@@ -1,5 +1,5 @@
 """
- this module uses functions from the older botupdstats module 
+ this module uses functions from the botupdstats module 
  and is used by botlogger which is a preprocessor for mod_ml
 
  botlogger feeds this module messages via the process function below
@@ -19,8 +19,7 @@
 
  as with botlogger this module can be adapted to do other tasks
  to change what happens to a specific message for a specific ip
- use a different function than readlog - in reality that should be 
- in its own module
+ use a different function than readlog
 """
 import logging
 # note that if included from another script the logging.basicConfig may be ignored
